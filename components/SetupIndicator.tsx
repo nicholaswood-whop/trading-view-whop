@@ -162,16 +162,24 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
           return
         }
         
+        // Always start with connection check
         setConnected(data.connectionExists)
-        if (data.connectionExists) {
-          if (data.step === 'attach' && data.indicators) {
+        if (!data.connectionExists) {
+          // No connection - must start at step 1
+          setStep('connect')
+        } else {
+          // Connection exists - check what step we're on
+          if (data.step === 'attach' && data.indicators && data.indicators.length > 0) {
             setIndicators(data.indicators)
             setStep('attach')
           } else {
+            // Need to import indicators
             setStep('import')
+            // Also try to load existing indicators if any
+            if (data.indicators && data.indicators.length > 0) {
+              setIndicators(data.indicators)
+            }
           }
-        } else {
-          setStep('connect')
         }
       }
     } catch (error) {
@@ -199,22 +207,26 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
 
       if (response.ok) {
         setConnected(true)
+        const importedCount = data.indicatorsImported || 0
         setMessage({
           type: 'success',
-          text: `Successfully connected! ${data.indicatorsImported || 0} indicators imported.`,
+          text: `Successfully connected! ${importedCount} indicator${importedCount !== 1 ? 's' : ''} imported automatically.`,
         })
         setSessionId('')
         setSessionIdSign('')
         
         // Move to next step
-        if (data.indicatorsImported > 0) {
+        if (importedCount > 0) {
           // Refresh indicators and move to attach step
           await checkSetupStatus()
         } else {
+          // No indicators imported automatically, move to import step
           setStep('import')
+          // Refresh to get any existing indicators
+          await checkSetupStatus()
         }
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to connect' })
+        setMessage({ type: 'error', text: data.error || 'Failed to connect. Please check your session cookies and try again.' })
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Connection failed' })
@@ -237,13 +249,21 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
       const data = await response.json()
 
       if (response.ok) {
+        const importedCount = data.count || data.indicatorsImported || 0
         setMessage({
           type: 'success',
-          text: `Successfully imported ${data.indicatorsImported || 0} indicators!`,
+          text: `Successfully imported ${importedCount} indicator${importedCount !== 1 ? 's' : ''}!`,
         })
+        // Refresh to get the imported indicators and move to attach step
         await checkSetupStatus()
+        if (importedCount > 0) {
+          // Small delay to show success message before moving to next step
+          setTimeout(() => {
+            setStep('attach')
+          }, 1000)
+        }
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to import indicators' })
+        setMessage({ type: 'error', text: data.error || 'Failed to import indicators. Please ensure your TradingView account is connected.' })
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Import failed' })
@@ -359,28 +379,57 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#1f2937' }}>
               Connect Your TradingView Account
             </h2>
-            <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
-              Enter your TradingView session cookies to connect your account. You can find these in your browser's developer tools.
+            <p style={{ marginBottom: '1.5rem', color: '#6b7280', lineHeight: '1.6' }}>
+              To get started, you need to provide your TradingView session cookies.
+              <br />
+              <strong style={{ color: '#1f2937', display: 'block', marginTop: '1rem' }}>How to get your cookies:</strong>
+              <span style={{ fontSize: '0.9rem', display: 'block', marginTop: '0.5rem' }}>
+                1. Log into TradingView in your browser
+                <br />
+                2. Open Developer Tools (F12 or right-click → Inspect)
+                <br />
+                3. Go to Application/Storage → Cookies → tradingview.com
+                <br />
+                4. Copy the values for <code style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>sessionid</code> and <code style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>sessionid_sign</code>
+              </span>
             </p>
             <form onSubmit={handleConnect}>
-              <input
-                type="text"
-                placeholder="Session ID (sessionid cookie)"
-                value={sessionId}
-                onChange={(e) => setSessionId(e.target.value)}
-                required
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Session ID Sign (sessionid_sign cookie)"
-                value={sessionIdSign}
-                onChange={(e) => setSessionIdSign(e.target.value)}
-                required
-                style={styles.input}
-              />
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label
+                  htmlFor="sessionId"
+                  style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: '#1a1a1a' }}
+                >
+                  Session ID:
+                </label>
+                <input
+                  id="sessionId"
+                  type="text"
+                  placeholder="Paste your sessionid cookie value"
+                  value={sessionId}
+                  onChange={(e) => setSessionId(e.target.value)}
+                  required
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginBottom: '2rem' }}>
+                <label
+                  htmlFor="sessionIdSign"
+                  style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: '#1a1a1a' }}
+                >
+                  Session ID Sign:
+                </label>
+                <input
+                  id="sessionIdSign"
+                  type="text"
+                  placeholder="Paste your sessionid_sign cookie value"
+                  value={sessionIdSign}
+                  onChange={(e) => setSessionIdSign(e.target.value)}
+                  required
+                  style={styles.input}
+                />
+              </div>
               <button type="submit" disabled={loading} style={styles.button}>
-                {loading ? 'Connecting...' : 'Connect TradingView'}
+                {loading ? 'Connecting...' : 'Connect TradingView Account'}
               </button>
             </form>
           </div>
@@ -392,12 +441,49 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#1f2937' }}>
               Import Your Indicators
             </h2>
-            <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
-              Import your TradingView indicators. This will fetch all indicators from your connected account.
+            <p style={{ marginBottom: '1.5rem', color: '#6b7280', lineHeight: '1.6' }}>
+              Import your TradingView indicators. This will fetch all indicators from your connected TradingView account.
+              <br />
+              <span style={{ fontSize: '0.9rem', display: 'block', marginTop: '0.5rem' }}>
+                After importing, you'll be able to select which indicator to attach to this experience.
+              </span>
             </p>
-            <button onClick={handleImport} disabled={loading} style={styles.button}>
-              {loading ? 'Importing...' : 'Import Indicators'}
-            </button>
+            {!connected && (
+              <div style={{
+                padding: '1rem',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '8px',
+                marginBottom: '1.5rem',
+                color: '#991b1b',
+              }}>
+                ⚠️ TradingView account not connected. Please go back to step 1 to connect your account first.
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => setStep('connect')} 
+                style={{
+                  ...styles.button,
+                  background: '#6b7280',
+                  flex: 1,
+                }}
+              >
+                ← Back to Connect
+              </button>
+              <button 
+                onClick={handleImport} 
+                disabled={loading || !connected} 
+                style={{
+                  ...styles.button,
+                  flex: 2,
+                  opacity: (!connected || loading) ? 0.7 : 1,
+                  cursor: (!connected || loading) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {loading ? 'Importing...' : 'Import Indicators'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -407,21 +493,47 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#1f2937' }}>
               Select Indicator to Attach
             </h2>
-            <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
-              Choose which indicator to attach to this experience.
+            <p style={{ marginBottom: '1.5rem', color: '#6b7280', lineHeight: '1.6' }}>
+              Choose which indicator to attach to this experience. Buyers will get access to this indicator when they purchase.
             </p>
             {indicators.length === 0 ? (
               <div>
-                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-                  No indicators available. Please import indicators first.
-                </p>
-                <button onClick={() => setStep('import')} style={styles.button}>
-                  Go Back to Import
-                </button>
+                <div style={{
+                  padding: '1rem',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  marginBottom: '1.5rem',
+                  color: '#991b1b',
+                }}>
+                  ⚠️ No indicators available. Please import indicators first.
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button 
+                    onClick={() => setStep('import')} 
+                    style={{
+                      ...styles.button,
+                      background: '#6b7280',
+                      flex: 1,
+                    }}
+                  >
+                    ← Back to Import
+                  </button>
+                  <button 
+                    onClick={() => setStep('connect')} 
+                    style={{
+                      ...styles.button,
+                      background: '#6b7280',
+                      flex: 1,
+                    }}
+                  >
+                    ← Back to Connect
+                  </button>
+                </div>
               </div>
             ) : (
               <>
-                <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ marginBottom: '1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
                   {indicators.map((indicator) => (
                     <div
                       key={indicator.id}
@@ -431,16 +543,39 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
                         ...(selectedIndicatorId === indicator.id ? styles.indicatorCardSelected : {}),
                       }}
                     >
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{indicator.name}</div>
+                      <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#1f2937' }}>
+                        {indicator.name}
+                      </div>
                       <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                        ID: {indicator.tradingViewId}
+                        TradingView ID: {indicator.tradingViewId}
                       </div>
                     </div>
                   ))}
                 </div>
-                <button onClick={handleAttach} disabled={loading || !selectedIndicatorId} style={styles.button}>
-                  {loading ? 'Attaching...' : 'Attach Indicator'}
-                </button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button 
+                    onClick={() => setStep('import')} 
+                    style={{
+                      ...styles.button,
+                      background: '#6b7280',
+                      flex: 1,
+                    }}
+                  >
+                    ← Back
+                  </button>
+                  <button 
+                    onClick={handleAttach} 
+                    disabled={loading || !selectedIndicatorId} 
+                    style={{
+                      ...styles.button,
+                      flex: 2,
+                      opacity: (!selectedIndicatorId || loading) ? 0.7 : 1,
+                      cursor: (!selectedIndicatorId || loading) ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {loading ? 'Attaching...' : selectedIndicatorId ? '✓ Attach Selected Indicator' : 'Select an Indicator First'}
+                  </button>
+                </div>
               </>
             )}
           </div>

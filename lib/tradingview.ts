@@ -86,6 +86,8 @@ export class TradingViewClient {
    * Grant access to an indicator for a TradingView user
    */
   async grantAccess(indicatorId: string, tradingViewUsername: string): Promise<boolean> {
+    const errors: string[] = []
+    
     try {
       // TradingView's endpoint for sharing/granting access
       // This uses their internal sharing mechanism
@@ -94,27 +96,54 @@ export class TradingViewClient {
         {
           username: tradingViewUsername,
           access_type: 'view', // or 'edit' if needed
+        },
+        {
+          validateStatus: (status) => status < 500, // Don't throw on 4xx
         }
       )
 
-      return response.status === 200 || response.status === 201
-    } catch (error: any) {
-      console.error('Error granting TradingView access:', error)
-      
-      // Alternative method: Use TradingView's invite system
-      try {
-        const inviteResponse = await this.client.post(
-          `/pine_facade/script/${indicatorId}/invite/`,
-          {
-            username: tradingViewUsername,
-          }
-        )
-        return inviteResponse.status === 200 || inviteResponse.status === 201
-      } catch (inviteError) {
-        console.error('Invite method also failed:', inviteError)
-        return false
+      if (response.status === 200 || response.status === 201) {
+        return true
       }
+
+      // Log the response for debugging
+      errors.push(`Share endpoint returned status ${response.status}: ${JSON.stringify(response.data || response.statusText)}`)
+    } catch (error: any) {
+      const errorMsg = error.response?.data 
+        ? JSON.stringify(error.response.data)
+        : error.message || 'Unknown error'
+      errors.push(`Share endpoint error: ${errorMsg}`)
+      console.error('Error granting TradingView access (share method):', error.response?.data || error.message)
     }
+    
+    // Alternative method: Use TradingView's invite system
+    try {
+      const inviteResponse = await this.client.post(
+        `/pine_facade/script/${indicatorId}/invite/`,
+        {
+          username: tradingViewUsername,
+        },
+        {
+          validateStatus: (status) => status < 500,
+        }
+      )
+
+      if (inviteResponse.status === 200 || inviteResponse.status === 201) {
+        return true
+      }
+
+      errors.push(`Invite endpoint returned status ${inviteResponse.status}: ${JSON.stringify(inviteResponse.data || inviteResponse.statusText)}`)
+    } catch (inviteError: any) {
+      const errorMsg = inviteError.response?.data 
+        ? JSON.stringify(inviteError.response.data)
+        : inviteError.message || 'Unknown error'
+      errors.push(`Invite endpoint error: ${errorMsg}`)
+      console.error('Invite method also failed:', inviteError.response?.data || inviteError.message)
+    }
+
+    // Log all errors for debugging
+    console.error('All TradingView access methods failed:', errors)
+    return false
   }
 
   /**

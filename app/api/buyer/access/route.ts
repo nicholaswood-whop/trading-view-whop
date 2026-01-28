@@ -139,10 +139,30 @@ export async function POST(request: NextRequest) {
               message: 'Access granted! As a company owner/admin, you have automatic access to all indicators.',
               access: ownerAccess,
               isOwnerOrAdmin: true,
+              logs: [
+                `✓ User ID: ${userId}`,
+                `✓ Company ID: ${indicator.companyId}`,
+                `✓ Role: Owner/Admin`,
+                `✓ Indicator ID: ${indicator.id}`,
+                `✓ TradingView Indicator ID: ${indicator.tradingViewId}`,
+                `✓ TradingView Username: ${tradingViewUsername.trim()}`,
+                `✓ Access granted on TradingView`,
+              ],
             })
           } else {
             return NextResponse.json(
-              { error: 'Failed to grant access on TradingView. Please verify your username.' },
+              { 
+                error: 'Failed to grant access on TradingView. Please verify your username.',
+                logs: [
+                  `✓ User ID: ${userId}`,
+                  `✓ Company ID: ${indicator.companyId}`,
+                  `✓ Role: Owner/Admin`,
+                  `✓ Indicator ID: ${indicator.id}`,
+                  `✓ TradingView Indicator ID: ${indicator.tradingViewId}`,
+                  `✓ TradingView Username: ${tradingViewUsername.trim()}`,
+                  `✗ Failed to grant access on TradingView - check TradingView connection or username`,
+                ],
+              },
               { status: 500 }
             )
           }
@@ -177,17 +197,45 @@ export async function POST(request: NextRequest) {
       indicator.connection.sessionIdSign
     )
 
+    const logs: string[] = [
+      `User ID: ${userId}`,
+      `Company ID: ${indicator.companyId || 'N/A'}`,
+      `Indicator ID: ${indicator.id}`,
+      `TradingView Indicator ID: ${indicator.tradingViewId}`,
+      `TradingView Username: ${tradingViewUsername}`,
+      `Membership ID: ${membershipId || 'N/A'}`,
+    ]
+
+    // Check TradingView connection first
+    const connectionValid = await tvClient.verifyConnection()
+    if (!connectionValid) {
+      logs.push('✗ TradingView connection invalid - session cookies may have expired')
+      return NextResponse.json(
+        { 
+          error: 'TradingView connection invalid. The seller needs to reconnect their TradingView account.',
+          logs,
+        },
+        { status: 500 }
+      )
+    }
+    logs.push('✓ TradingView connection verified')
+
     const granted = await tvClient.grantAccess(
       indicator.tradingViewId,
       tradingViewUsername
     )
 
     if (!granted) {
+      logs.push('✗ Failed to grant access on TradingView - check username or indicator permissions')
       return NextResponse.json(
-        { error: 'Failed to grant access on TradingView. Please verify your username.' },
+        { 
+          error: 'Failed to grant access on TradingView. Please verify your username is correct and the indicator exists.',
+          logs,
+        },
         { status: 500 }
       )
     }
+    logs.push('✓ Access granted on TradingView')
 
     // Create or update access record
     if (access) {
@@ -213,15 +261,27 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    logs.push('✓ Access record created/updated in database')
+    
     return NextResponse.json({
       success: true,
       message: 'Access granted successfully',
       access,
+      logs,
     })
   } catch (error: any) {
     console.error('Error granting access:', error)
+    const errorLogs = [
+      `✗ Error: ${error.message || 'Unknown error'}`,
+      `Error type: ${error.constructor?.name || 'Unknown'}`,
+      error.stack ? `Stack: ${error.stack.split('\n').slice(0, 3).join(' ')}` : '',
+    ]
     return NextResponse.json(
-      { error: 'Failed to grant access', details: error.message },
+      { 
+        error: 'Failed to grant access', 
+        details: error.message,
+        logs: errorLogs,
+      },
       { status: 500 }
     )
   }

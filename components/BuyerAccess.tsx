@@ -106,6 +106,8 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [focusedInput, setFocusedInput] = useState<string | null>(null)
   const [accessGranted, setAccessGranted] = useState(false)
+  const [logs, setLogs] = useState<string[]>([])
+  const [showLogs, setShowLogs] = useState(false)
 
   useEffect(() => {
     // If experienceId is provided as prop, use it
@@ -180,6 +182,12 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
 
       const data = await response.json()
 
+      // Always show logs if available
+      if (data.logs && Array.isArray(data.logs)) {
+        setLogs(data.logs)
+        setShowLogs(true)
+      }
+
       if (response.ok) {
         if (data.isOwnerOrAdmin) {
           setMessage({
@@ -200,9 +208,20 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
         // - When membership is cancelled/expired: access is revoked
         // - Owners/admins always have access
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to grant access' })
+        const errorText = data.error || 'Failed to grant access'
+        const detailsText = data.details ? ` (${data.details})` : ''
+        setMessage({ 
+          type: 'error', 
+          text: `${errorText}${detailsText}`,
+        })
+        // Show logs on error
+        if (data.logs && Array.isArray(data.logs)) {
+          setShowLogs(true)
+        }
       }
     } catch (error: any) {
+      setLogs([`✗ Network error: ${error.message}`, `Check your connection and try again`])
+      setShowLogs(true)
       setMessage({ type: 'error', text: error.message || 'Failed to grant access' })
     } finally {
       setLoading(false)
@@ -307,6 +326,72 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
             {loading ? 'Granting Access...' : '✨ Grant Access'}
           </button>
         </form>
+
+        {showLogs && logs.length > 0 && (
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '1.5rem',
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            fontSize: '0.85rem',
+            fontFamily: 'monospace',
+            maxHeight: '300px',
+            overflowY: 'auto',
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '0.75rem',
+            }}>
+              <strong style={{ color: '#1a1a1a' }}>🔍 Debug Logs:</strong>
+              <button
+                onClick={() => setShowLogs(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  padding: '0.25rem 0.5rem',
+                }}
+              >
+                Hide
+              </button>
+            </div>
+            {logs.map((log, index) => (
+              <div 
+                key={index}
+                style={{
+                  padding: '0.25rem 0',
+                  color: log.startsWith('✗') ? '#dc2626' : log.startsWith('✓') ? '#059669' : '#4b5563',
+                  lineHeight: '1.5',
+                }}
+              >
+                {log}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!showLogs && (message?.type === 'error' || logs.length > 0) && (
+          <button
+            onClick={() => setShowLogs(true)}
+            style={{
+              marginTop: '1rem',
+              background: 'none',
+              border: '1px solid rgba(102, 126, 234, 0.3)',
+              borderRadius: '8px',
+              padding: '0.5rem 1rem',
+              color: '#667eea',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+            }}
+          >
+            🔍 Show Debug Logs
+          </button>
+        )}
 
         <div style={styles.infoBox}>
           <strong style={{ color: '#1a1a1a' }}>💡 Note:</strong> After granting access, it may take a few moments for the

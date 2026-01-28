@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Initialize Whop client early so we can use it for owner checks
+    const whopClient = new WhopClient()
+
     // Find the indicator attached to this experience
     logs.push(`🔍 Looking for indicator with experienceId=${experienceId}, companyId=${companyId || 'any'}`)
     const indicator = await prisma.tradingViewIndicator.findFirst({
@@ -81,14 +84,35 @@ export async function POST(request: NextRequest) {
 
     if (!indicator) {
       logs.push(`✗ No indicator found for experienceId=${experienceId}`)
+      
+      // If user is owner/admin, they should set up the indicator first
+      // Try to get companyId to check if they're the owner
+      let isOwner = false
+      if (companyId && userId) {
+        try {
+          isOwner = await whopClient.isUserOwnerOrAdmin(userId, companyId)
+          logs.push(`🔍 Owner check for company ${companyId}: ${isOwner ? 'YES' : 'NO'}`)
+        } catch (error: any) {
+          logs.push(`⚠️ Could not check owner status: ${error.message}`)
+        }
+      } else {
+        logs.push(`⚠️ Cannot check owner status: companyId=${companyId || 'none'}, userId=${userId || 'none'}`)
+      }
+      
       return NextResponse.json(
-        { error: 'No indicator found for this experience', logs },
+        { 
+          error: 'No indicator found for this experience',
+          isOwner,
+          companyId: companyId || null,
+          message: isOwner 
+            ? 'You need to connect your TradingView account and attach an indicator to this experience first. Go to your seller dashboard to set this up.'
+            : 'This experience does not have an indicator attached yet. Please contact the seller.',
+          logs,
+        },
         { status: 404 }
       )
     }
     logs.push(`✓ Found indicator: id=${indicator.id}, name=${indicator.name}, companyId=${indicator.companyId}, tradingViewId=${indicator.tradingViewId}`)
-
-    const whopClient = new WhopClient()
 
     // If we don't have userId yet, we need to get it from membership
     if (!userId && membershipId) {

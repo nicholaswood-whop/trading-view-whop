@@ -210,12 +210,24 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
       } else {
         const errorText = data.error || 'Failed to grant access'
         const detailsText = data.details ? ` (${data.details})` : ''
+        const fullMessage = data.message || `${errorText}${detailsText}`
+        
         setMessage({ 
           type: 'error', 
-          text: `${errorText}${detailsText}`,
+          text: fullMessage,
         })
+        
+        // If user is owner and no indicator found, show helpful message with link
+        if (data.isOwner && data.error === 'No indicator found for this experience') {
+          setMessage({
+            type: 'error',
+            text: fullMessage + ' Click the button below to go to your seller dashboard.',
+          })
+        }
+        
         // Show logs on error
         if (data.logs && Array.isArray(data.logs)) {
+          setLogs(data.logs)
           setShowLogs(true)
         }
       }
@@ -372,6 +384,36 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
                 {log}
               </div>
             ))}
+          </div>
+        )}
+
+        {message?.type === 'error' && (window as any).whop?.companyId && (
+          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <a
+              href={`/dashboard/${(window as any).whop.companyId}`}
+              style={{
+                display: 'inline-block',
+                padding: '1rem 2rem',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                textDecoration: 'none',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.5)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = ''
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)'
+              }}
+            >
+              🛠️ Go to Seller Dashboard
+            </a>
           </div>
         )}
 

@@ -159,13 +159,22 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
     }
 
     try {
+      // Get Whop user context if available (from iframe)
+      const whopContext = typeof window !== 'undefined' ? (window as any).whop : null
+      const userId = whopContext?.userId || whopContext?.user_id || null
+
       const response = await fetch('/api/buyer/access', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          // Pass Whop token if available in iframe context
+          ...(whopContext?.token ? { 'x-whop-user-token': whopContext.token } : {}),
+        },
         body: JSON.stringify({
           tradingViewUsername: tradingViewUsername.trim(),
           experienceId: expId,
           membershipId: getMembershipId(),
+          userId, // Pass userId if we have it from context
         }),
       })
 

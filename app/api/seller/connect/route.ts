@@ -10,16 +10,26 @@ export const runtime = 'nodejs'
 /**
  * POST /api/seller/connect
  * Connect seller's TradingView account
+ * Allows companyId from request body for seller dashboard access
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
-    const { sessionId, sessionIdSign } = body
+    const { sessionId, sessionIdSign, companyId: bodyCompanyId } = body
+    
+    let user = await getAuthenticatedUser(request)
+    
+    // If we have companyId from body and no auth, allow access with companyId override
+    if (!user && bodyCompanyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: bodyCompanyId,
+      })
+    }
+    
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized - companyId required' }, { status: 401 })
+    }
 
     if (!sessionId || !sessionIdSign) {
       return NextResponse.json(
@@ -114,12 +124,25 @@ export async function POST(request: NextRequest) {
 /**
  * DELETE /api/seller/connect
  * Disconnect TradingView account
+ * Allows companyId from request body for seller dashboard access
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json().catch(() => ({}))
+    const { companyId: bodyCompanyId } = body
+    
+    let user = await getAuthenticatedUser(request)
+    
+    // If we have companyId from body and no auth, allow access with companyId override
+    if (!user && bodyCompanyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: bodyCompanyId,
+      })
+    }
+    
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized - companyId required' }, { status: 401 })
     }
 
     await prisma.tradingViewConnection.delete({

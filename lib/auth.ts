@@ -55,21 +55,52 @@ export async function verifyWhopToken(
 
 /**
  * Get authenticated user from request
+ * Allows optional companyId override for seller dashboard access when token is not available
  */
 export async function getAuthenticatedUser(
-  request: NextRequest
-): Promise<WhopUserToken | null> {
+  request: NextRequest,
+  options?: { allowCompanyIdOverride?: boolean; companyId?: string }
+): Promise<{ userId: string; companyId: string } | null> {
   console.log('[Auth] Checking for Whop user token...')
   const token = request.headers.get('x-whop-user-token')
   console.log(`[Auth] Token present: ${!!token}, length: ${token?.length || 0}`)
+  
+  // If we have a companyId override and allowCompanyIdOverride is true, use it
+  // This allows seller dashboard access when companyId is known from experience
+  if (options?.allowCompanyIdOverride && options?.companyId) {
+    // Try to get userId from token if available
+    let userId = ''
+    if (token) {
+      try {
+        const decoded = await verifyWhopToken(request)
+        if (decoded) {
+          userId = decoded.userId || ''
+        }
+      } catch (error) {
+        // Token might be invalid, but we can still proceed with companyId
+        console.log('[Auth] Token invalid but using companyId override')
+      }
+    }
+    
+    // Return with companyId override, even if userId is empty
+    // The seller dashboard can work with just companyId for some operations
+    return {
+      userId,
+      companyId: options.companyId,
+    }
+  }
   
   const user = await verifyWhopToken(request)
   
   if (user) {
     console.log(`[Auth] ✓ Authenticated user: userId=${user.userId}, companyId=${user.companyId}`)
+    return {
+      userId: user.userId,
+      companyId: user.companyId,
+    }
   } else {
     console.log(`[Auth] ✗ No authenticated user found`)
   }
   
-  return user
+  return null
 }

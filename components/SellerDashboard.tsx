@@ -138,9 +138,33 @@ export default function SellerDashboard() {
     loadIndicators()
   }, [])
 
+  const getCompanyId = (): string | null => {
+    // Try to get companyId from URL
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname
+      const match = path.match(/\/dashboard\/([^\/]+)/)
+      if (match) {
+        return match[1]
+      }
+      
+      // Try from Whop context
+      const whopContext = (window as any).whop
+      if (whopContext?.companyId || whopContext?.company_id) {
+        return whopContext.companyId || whopContext.company_id
+      }
+      
+      // Try from URL params
+      const params = new URLSearchParams(window.location.search)
+      return params.get('companyId')
+    }
+    return null
+  }
+
   const checkConnection = async () => {
     try {
-      const response = await fetch('/api/seller/indicators')
+      const companyId = getCompanyId()
+      const url = companyId ? `/api/seller/indicators?companyId=${companyId}` : '/api/seller/indicators'
+      const response = await fetch(url)
       if (response.ok) {
         setConnected(true)
       } else if (response.status === 404) {
@@ -155,7 +179,9 @@ export default function SellerDashboard() {
 
   const loadIndicators = async () => {
     try {
-      const response = await fetch('/api/seller/indicators')
+      const companyId = getCompanyId()
+      const url = companyId ? `/api/seller/indicators?companyId=${companyId}` : '/api/seller/indicators'
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setIndicators(data.indicators || [])
@@ -171,12 +197,14 @@ export default function SellerDashboard() {
     setMessage(null)
 
     try {
+      const companyId = getCompanyId()
       const response = await fetch('/api/seller/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
           sessionIdSign,
+          ...(companyId ? { companyId } : {}),
         }),
       })
 
@@ -207,8 +235,13 @@ export default function SellerDashboard() {
     }
 
     try {
+      const companyId = getCompanyId()
       const response = await fetch('/api/seller/connect', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(companyId ? { companyId } : {}),
+        }),
       })
 
       if (response.ok) {
@@ -223,8 +256,14 @@ export default function SellerDashboard() {
 
   const handleImport = async () => {
     try {
-      const response = await fetch('/api/seller/indicators', {
+      const companyId = getCompanyId()
+      const url = companyId ? `/api/seller/indicators?companyId=${companyId}` : '/api/seller/indicators'
+      const response = await fetch(url, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(companyId ? { companyId } : {}),
+        }),
       })
 
       const data = await response.json()
@@ -250,10 +289,14 @@ export default function SellerDashboard() {
     }
 
     try {
-      const response = await fetch(`/api/seller/indicators/${indicatorId}/attach`, {
+      const companyId = getCompanyId()
+      const response = await fetch(`/api/seller/indicators/${indicatorId}/attach${companyId ? `?companyId=${companyId}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ experienceId }),
+        body: JSON.stringify({ 
+          experienceId,
+          ...(companyId ? { companyId } : {}),
+        }),
       })
 
       const data = await response.json()

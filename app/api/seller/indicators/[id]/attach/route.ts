@@ -15,13 +15,27 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+    // Try to get companyId from URL params or request body
+    const url = new URL(request.url)
+    const companyIdParam = url.searchParams.get('companyId')
+    
+    let user = await getAuthenticatedUser(request)
+    
+    // If we have companyId from body and no auth, allow access with companyId override
     const body = await request.json()
-    const { experienceId } = body
+    const { experienceId, companyId: bodyCompanyId } = body
+    const companyId = companyIdParam || bodyCompanyId
+    
+    if (!user && companyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: companyId,
+      })
+    }
+    
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized - companyId required' }, { status: 401 })
+    }
 
     if (!experienceId) {
       return NextResponse.json(
@@ -29,6 +43,7 @@ export async function POST(
         { status: 400 }
       )
     }
+
 
     // Verify the indicator belongs to the user's company
     const indicator = await prisma.tradingViewIndicator.findFirst({

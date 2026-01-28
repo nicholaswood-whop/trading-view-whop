@@ -74,19 +74,27 @@ export async function POST(request: NextRequest) {
     let detectedCompanyId = companyId
     if (!detectedCompanyId && experienceId) {
       try {
-        logs.push(`🔍 Trying to get companyId from experience/product ID: ${experienceId}`)
-        // Experience ID might be a product ID - try to get product info
-        // First, try if experienceId is actually a product ID
-        const product = await whopClient.getProduct(experienceId)
-        if (product && product.company_id) {
-          detectedCompanyId = product.company_id
-          logs.push(`✓ Got companyId from product: ${detectedCompanyId}`)
+        logs.push(`🔍 Trying to get companyId from experience ID: ${experienceId}`)
+        
+        // First, try to get it as an experience (most likely)
+        const experience = await whopClient.getExperience(experienceId)
+        if (experience && experience.company_id) {
+          detectedCompanyId = experience.company_id
+          logs.push(`✓ Got companyId from experience: ${detectedCompanyId} (experience name: ${experience.name})`)
         } else {
-          logs.push(`⚠️ Experience ID ${experienceId} is not a valid product ID or product has no company_id`)
+          // If not an experience, try as a product ID
+          logs.push(`⚠️ Experience ID ${experienceId} is not an experience, trying as product ID...`)
+          const product = await whopClient.getProduct(experienceId)
+          if (product && product.company_id) {
+            detectedCompanyId = product.company_id
+            logs.push(`✓ Got companyId from product: ${detectedCompanyId}`)
+          } else {
+            logs.push(`⚠️ Experience ID ${experienceId} is not a valid experience or product ID`)
+          }
         }
       } catch (error: any) {
         logs.push(`⚠️ Could not get company from experience/product: ${error.message}`)
-        // Experience ID might not be a product ID, that's okay
+        // Experience ID might not be valid, that's okay
       }
     }
 

@@ -115,6 +115,28 @@ export class WhopClient {
   }
 
   /**
+   * Get experience details using the Whop SDK
+   * Experiences have a company property with the company ID
+   * @see https://github.com/whopio/whopsdk-typescript
+   */
+  async getExperience(experienceId: string): Promise<{ id: string; company_id: string; name: string } | null> {
+    try {
+      const experience = await this.client.experiences.retrieve(experienceId)
+      
+      // Experience has company.id in the company object
+      return {
+        id: experience.id,
+        company_id: experience.company?.id || '',
+        name: experience.name || '',
+      }
+    } catch (error: any) {
+      console.error('Error fetching Whop experience:', error)
+      return null
+    }
+  }
+
+
+  /**
    * Check if membership is active
    */
   isMembershipActive(membership: WhopMembership): boolean {

@@ -3,6 +3,10 @@ import { getAuthenticatedUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TradingViewClient } from '@/lib/tradingview'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * POST /api/buyer/access
  * Buyer enters their TradingView username to get access

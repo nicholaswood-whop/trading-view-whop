@@ -3,6 +3,10 @@ import { getAuthenticatedUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TradingViewClient } from '@/lib/tradingview'
 
+// Mark this route as dynamic to prevent static analysis during build
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * POST /api/seller/connect
  * Connect seller's TradingView account

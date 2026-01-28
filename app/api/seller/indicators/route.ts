@@ -3,6 +3,10 @@ import { getAuthenticatedUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TradingViewClient } from '@/lib/tradingview'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * GET /api/seller/indicators
  * Get all indicators for the seller

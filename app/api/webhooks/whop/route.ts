@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { TradingViewClient } from '@/lib/tradingview'
 import { WhopClient } from '@/lib/whop'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * POST /api/webhooks/whop
  * Handle Whop webhook events (membership created, updated, cancelled)

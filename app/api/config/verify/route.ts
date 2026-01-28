@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { verifyWhopConfig } from '@/lib/whop-config'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * GET /api/config/verify
  * Verify that Whop configuration is set up correctly

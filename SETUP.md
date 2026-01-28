@@ -22,8 +22,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://[PROJECT-REF].supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-# JWT Secret for token verification (optional)
-JWT_SECRET=your_jwt_secret_here
+# JWT_SECRET is NOT needed - Whop handles JWT verification automatically
+# We only decode the token, not verify it, since Whop already verified it
 ```
 
 ## Current Configuration

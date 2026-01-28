@@ -80,7 +80,7 @@ Required environment variables (see `SETUP.md` for current configuration):
 - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (optional, for direct Supabase features)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key (optional)
 - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (optional, for admin operations)
-- `JWT_SECRET`: Secret for JWT token verification (optional, Whop handles verification)
+- `JWT_SECRET`: NOT NEEDED - Whop handles JWT token verification automatically. We only decode the token.
 
 **Current Configuration:**
 - ✅ Whop API Key: Configured

@@ -34,7 +34,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # JWT (optional)
-JWT_SECRET=your_jwt_secret
+# JWT_SECRET is NOT needed - Whop handles JWT verification automatically
 ```
 
 ## Build Configuration

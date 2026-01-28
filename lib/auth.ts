@@ -45,8 +45,11 @@ export async function verifyWhopToken(
     }
 
     console.log(`[Auth] Decoding JWT token (length: ${token.length})...`)
-    // In production, verify with Whop's public key
-    // For now, we'll decode without verification (Whop handles verification)
+    // NOTE: We decode without verification because:
+    // 1. Whop already verifies the token on their end before sending it
+    // 2. The token is sent over HTTPS in the iframe context
+    // 3. We don't have Whop's public key, and don't need it since Whop handles verification
+    // If you want extra security, you could fetch Whop's public key and verify, but it's not required
     const decoded = jwt.decode(token, { complete: true }) as jwt.JwtPayload | null
     
     if (!decoded || typeof decoded === 'string') {

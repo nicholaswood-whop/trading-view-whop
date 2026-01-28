@@ -19,14 +19,28 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p>Loading...</p>
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        <div style={{
+          color: 'white',
+          fontSize: '1.5rem',
+          fontWeight: 500,
+          textShadow: '0 2px 20px rgba(255, 255, 255, 0.3)',
+        }}>
+          Loading...
+        </div>
       </div>
     )
   }
 
   return (
-    <main style={{ minHeight: '100vh', padding: '2rem' }}>
+    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
       {isSeller ? <SellerDashboard /> : <BuyerAccess />}
     </main>
   )

@@ -14,6 +14,115 @@ interface Indicator {
   experienceId: string | null
 }
 
+const styles = {
+  container: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '2rem',
+    position: 'relative' as const,
+    zIndex: 1,
+  },
+  title: {
+    fontSize: '2.5rem',
+    fontWeight: 700,
+    background: 'linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    marginBottom: '0.5rem',
+    textShadow: '0 2px 20px rgba(255, 255, 255, 0.3)',
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderRadius: '24px',
+    padding: '2.5rem',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  input: {
+    width: '100%',
+    padding: '1rem 1.25rem',
+    border: '2px solid rgba(102, 126, 234, 0.2)',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    outline: 'none',
+  },
+  inputFocus: {
+    borderColor: 'rgba(102, 126, 234, 0.5)',
+    boxShadow: '0 0 0 4px rgba(102, 126, 234, 0.1), 0 4px 12px rgba(102, 126, 234, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 1)',
+  },
+  button: {
+    padding: '1rem 2rem',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    fontWeight: 600,
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    position: 'relative' as const,
+    overflow: 'hidden',
+  },
+  buttonPrimary: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4), 0 0 0 0 rgba(102, 126, 234, 0.5)',
+  },
+  buttonPrimaryHover: {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 25px rgba(102, 126, 234, 0.5), 0 0 0 4px rgba(102, 126, 234, 0.1)',
+  },
+  buttonSuccess: {
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
+  },
+  buttonDanger: {
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
+  },
+  message: {
+    padding: '1rem 1.5rem',
+    marginBottom: '1.5rem',
+    borderRadius: '12px',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    animation: 'fadeIn 0.4s ease-out',
+  },
+  messageSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#065f46',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+  },
+  messageError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    color: '#991b1b',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
+  },
+  indicatorCard: {
+    padding: '1.5rem',
+    border: '2px solid rgba(102, 126, 234, 0.1)',
+    borderRadius: '16px',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backdropFilter: 'blur(10px)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    position: 'relative' as const,
+  },
+  indicatorCardHover: {
+    transform: 'translateY(-4px)',
+    borderColor: 'rgba(102, 126, 234, 0.3)',
+    boxShadow: '0 12px 24px rgba(102, 126, 234, 0.15), 0 0 0 1px rgba(102, 126, 234, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+}
+
 export default function SellerDashboard() {
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -22,6 +131,7 @@ export default function SellerDashboard() {
   const [sessionId, setSessionId] = useState('')
   const [sessionIdSign, setSessionIdSign] = useState('')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [focusedInput, setFocusedInput] = useState<string | null>(null)
 
   useEffect(() => {
     checkConnection()
@@ -160,21 +270,25 @@ export default function SellerDashboard() {
   }
 
   if (loading) {
-    return <div style={{ padding: '2rem' }}>Loading...</div>
+    return (
+      <div style={{ ...styles.container, textAlign: 'center', color: 'white' }}>
+        <div style={{ fontSize: '1.5rem' }}>Loading...</div>
+      </div>
+    )
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '2rem' }}>TradingView Indicators - Seller Dashboard</h1>
+    <div style={styles.container} className="fade-in">
+      <h1 style={styles.title}>TradingView Indicators</h1>
+      <p style={{ color: 'rgba(255, 255, 255, 0.9)', marginBottom: '2rem', fontSize: '1.1rem' }}>
+        Manage your TradingView indicators and connect them to Whop experiences
+      </p>
 
       {message && (
         <div
           style={{
-            padding: '1rem',
-            marginBottom: '1rem',
-            borderRadius: '4px',
-            backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
-            color: message.type === 'success' ? '#155724' : '#721c24',
+            ...styles.message,
+            ...(message.type === 'success' ? styles.messageSuccess : styles.messageError),
           }}
         >
           {message.text}
@@ -182,34 +296,31 @@ export default function SellerDashboard() {
       )}
 
       {!connected ? (
-        <div
-          style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2 style={{ marginBottom: '1rem' }}>Connect Your TradingView Account</h2>
-          <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+        <div style={styles.card} className="slide-in">
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '1rem', color: '#1a1a1a' }}>
+            Connect Your TradingView Account
+          </h2>
+          <p style={{ marginBottom: '2rem', color: '#666', lineHeight: '1.6' }}>
             To get started, you need to provide your TradingView session cookies.
             <br />
-            <strong>How to get your cookies:</strong>
+            <strong style={{ color: '#1a1a1a' }}>How to get your cookies:</strong>
             <br />
-            1. Log into TradingView in your browser
-            <br />
-            2. Open Developer Tools (F12)
-            <br />
-            3. Go to Application/Storage → Cookies → tradingview.com
-            <br />
-            4. Copy the values for <code>sessionid</code> and <code>sessionid_sign</code>
+            <span style={{ fontSize: '0.9rem' }}>
+              1. Log into TradingView in your browser
+              <br />
+              2. Open Developer Tools (F12)
+              <br />
+              3. Go to Application/Storage → Cookies → tradingview.com
+              <br />
+              4. Copy the values for <code style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>sessionid</code> and <code style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>sessionid_sign</code>
+            </span>
           </p>
 
           <form onSubmit={handleConnect}>
-            <div style={{ marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
               <label
                 htmlFor="sessionId"
-                style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}
+                style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: '#1a1a1a' }}
               >
                 Session ID:
               </label>
@@ -218,22 +329,21 @@ export default function SellerDashboard() {
                 type="text"
                 value={sessionId}
                 onChange={(e) => setSessionId(e.target.value)}
+                onFocus={() => setFocusedInput('sessionId')}
+                onBlur={() => setFocusedInput(null)}
                 required
                 style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem',
+                  ...styles.input,
+                  ...(focusedInput === 'sessionId' ? styles.inputFocus : {}),
                 }}
                 placeholder="Paste your sessionid cookie value"
               />
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '2rem' }}>
               <label
                 htmlFor="sessionIdSign"
-                style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}
+                style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: '#1a1a1a' }}
               >
                 Session ID Sign:
               </label>
@@ -242,13 +352,12 @@ export default function SellerDashboard() {
                 type="text"
                 value={sessionIdSign}
                 onChange={(e) => setSessionIdSign(e.target.value)}
+                onFocus={() => setFocusedInput('sessionIdSign')}
+                onBlur={() => setFocusedInput(null)}
                 required
                 style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem',
+                  ...styles.input,
+                  ...(focusedInput === 'sessionIdSign' ? styles.inputFocus : {}),
                 }}
                 placeholder="Paste your sessionid_sign cookie value"
               />
@@ -258,14 +367,22 @@ export default function SellerDashboard() {
               type="submit"
               disabled={connecting}
               style={{
-                padding: '0.75rem 2rem',
-                backgroundColor: '#007bff',
-                color: 'white',
-                borderRadius: '4px',
-                fontSize: '1rem',
-                fontWeight: 'bold',
+                ...styles.button,
+                ...styles.buttonPrimary,
+                ...(!connecting ? { ':hover': styles.buttonPrimaryHover } : {}),
+                opacity: connecting ? 0.7 : 1,
                 cursor: connecting ? 'not-allowed' : 'pointer',
-                opacity: connecting ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!connecting) {
+                  Object.assign(e.currentTarget.style, styles.buttonPrimaryHover)
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!connecting) {
+                  e.currentTarget.style.transform = ''
+                  e.currentTarget.style.boxShadow = styles.buttonPrimary.boxShadow
+                }
               }}
             >
               {connecting ? 'Connecting...' : 'Connect Account'}
@@ -276,42 +393,53 @@ export default function SellerDashboard() {
         <div>
           <div
             style={{
-              backgroundColor: 'white',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              ...styles.card,
               marginBottom: '2rem',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap' as const,
+              gap: '1rem',
             }}
+            className="slide-in"
           >
             <div>
-              <h2 style={{ marginBottom: '0.5rem' }}>TradingView Account Connected</h2>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1a1a1a' }}>
+                TradingView Account Connected
+              </h2>
               <p style={{ color: '#666' }}>Your indicators are synced automatically</p>
             </div>
-            <div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' as const }}>
               <button
                 onClick={handleImport}
                 style={{
-                  padding: '0.5rem 1rem',
-                  marginRight: '1rem',
-                  backgroundColor: '#28a745',
-                  color: 'white',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
+                  ...styles.button,
+                  ...styles.buttonSuccess,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = ''
+                  e.currentTarget.style.boxShadow = styles.buttonSuccess.boxShadow
                 }}
               >
-                Refresh Indicators
+                🔄 Refresh Indicators
               </button>
               <button
                 onClick={handleDisconnect}
                 style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
+                  ...styles.button,
+                  ...styles.buttonDanger,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(239, 68, 68, 0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = ''
+                  e.currentTarget.style.boxShadow = styles.buttonDanger.boxShadow
                 }}
               >
                 Disconnect
@@ -319,61 +447,67 @@ export default function SellerDashboard() {
             </div>
           </div>
 
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: '2rem',
-              borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            <h2 style={{ marginBottom: '1.5rem' }}>Your Indicators ({indicators.length})</h2>
+          <div style={styles.card} className="slide-in">
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '1.5rem', color: '#1a1a1a' }}>
+              Your Indicators ({indicators.length})
+            </h2>
 
             {indicators.length === 0 ? (
-              <p style={{ color: '#666' }}>No indicators found. Try refreshing.</p>
+              <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
+                No indicators found. Try refreshing.
+              </p>
             ) : (
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                {indicators.map((indicator) => (
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {indicators.map((indicator, index) => (
                   <div
                     key={indicator.id}
                     style={{
-                      padding: '1.5rem',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
+                      ...styles.indicatorCard,
+                      animationDelay: `${index * 0.1}s`,
+                    }}
+                    className="fade-in"
+                    onMouseEnter={(e) => {
+                      Object.assign(e.currentTarget.style, styles.indicatorCardHover)
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = ''
+                      e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.1)'
+                      e.currentTarget.style.boxShadow = ''
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.6)'
                     }}
                   >
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ marginBottom: '0.5rem' }}>{indicator.name}</h3>
-                      <p style={{ color: '#666', fontSize: '0.9rem' }}>
-                        TradingView ID: {indicator.tradingViewId}
-                      </p>
-                      {indicator.experienceId && (
-                        <p style={{ color: '#28a745', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                          ✓ Attached to Experience: {indicator.experienceId}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: '1rem' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: 600, color: '#1a1a1a' }}>
+                          {indicator.name}
+                        </h3>
+                        <p style={{ color: '#666', fontSize: '0.9rem' }}>
+                          TradingView ID: <code style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>{indicator.tradingViewId}</code>
                         </p>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        placeholder="Experience ID"
-                        defaultValue={indicator.experienceId || ''}
-                        onBlur={(e) => {
-                          if (e.target.value !== indicator.experienceId) {
-                            handleAttach(indicator.id, e.target.value)
-                          }
-                        }}
-                        style={{
-                          padding: '0.5rem',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          fontSize: '0.9rem',
-                          width: '200px',
-                        }}
-                      />
+                        {indicator.experienceId && (
+                          <p style={{ color: '#10b981', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+                            ✓ Attached to Experience: {indicator.experienceId}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', minWidth: '300px' }}>
+                        <input
+                          type="text"
+                          placeholder="Experience ID"
+                          defaultValue={indicator.experienceId || ''}
+                          onBlur={(e) => {
+                            if (e.target.value !== indicator.experienceId) {
+                              handleAttach(indicator.id, e.target.value)
+                            }
+                          }}
+                          style={{
+                            ...styles.input,
+                            flex: 1,
+                            padding: '0.75rem 1rem',
+                            fontSize: '0.9rem',
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -2,14 +2,105 @@
 
 import { useState } from 'react'
 
+const styles = {
+  container: {
+    maxWidth: '600px',
+    margin: '0 auto',
+    padding: '2rem',
+    position: 'relative' as const,
+    zIndex: 1,
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderRadius: '24px',
+    padding: '2.5rem',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  title: {
+    fontSize: '2rem',
+    fontWeight: 700,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    marginBottom: '1rem',
+  },
+  input: {
+    width: '100%',
+    padding: '1rem 1.25rem',
+    border: '2px solid rgba(102, 126, 234, 0.2)',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    outline: 'none',
+  },
+  inputFocus: {
+    borderColor: 'rgba(102, 126, 234, 0.5)',
+    boxShadow: '0 0 0 4px rgba(102, 126, 234, 0.1), 0 4px 12px rgba(102, 126, 234, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 1)',
+  },
+  button: {
+    width: '100%',
+    padding: '1rem 2rem',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    fontWeight: 600,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4), 0 0 0 0 rgba(102, 126, 234, 0.5)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    position: 'relative' as const,
+    overflow: 'hidden',
+  },
+  buttonHover: {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 25px rgba(102, 126, 234, 0.5), 0 0 0 4px rgba(102, 126, 234, 0.1)',
+  },
+  message: {
+    padding: '1rem 1.5rem',
+    marginBottom: '1.5rem',
+    borderRadius: '12px',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    animation: 'fadeIn 0.4s ease-out',
+  },
+  messageSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#065f46',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+  },
+  messageError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    color: '#991b1b',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
+  },
+  infoBox: {
+    marginTop: '2rem',
+    padding: '1.5rem',
+    backgroundColor: 'rgba(102, 126, 234, 0.05)',
+    borderRadius: '12px',
+    border: '1px solid rgba(102, 126, 234, 0.1)',
+    fontSize: '0.9rem',
+    color: '#4b5563',
+    lineHeight: '1.6',
+  },
+}
+
 export default function BuyerAccess() {
   const [tradingViewUsername, setTradingViewUsername] = useState('')
   const [experienceId, setExperienceId] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [focusedInput, setFocusedInput] = useState<string | null>(null)
 
-  // In a real app, experienceId and membershipId would come from Whop context
-  // For now, we'll get them from URL params or let user enter
   const getExperienceId = () => {
     const params = new URLSearchParams(window.location.search)
     return params.get('experienceId') || experienceId
@@ -54,7 +145,7 @@ export default function BuyerAccess() {
       if (response.ok) {
         setMessage({
           type: 'success',
-          text: 'Access granted! You should now have access to the indicator on TradingView.',
+          text: '✨ Access granted! You should now have access to the indicator on TradingView.',
         })
         setTradingViewUsername('')
       } else {
@@ -68,28 +159,18 @@ export default function BuyerAccess() {
   }
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        }}
-      >
-        <h1 style={{ marginBottom: '1rem' }}>Get TradingView Indicator Access</h1>
-        <p style={{ marginBottom: '2rem', color: '#666' }}>
+    <div style={styles.container} className="fade-in">
+      <div style={styles.card} className="slide-in">
+        <h1 style={styles.title}>Get TradingView Indicator Access</h1>
+        <p style={{ marginBottom: '2rem', color: '#666', lineHeight: '1.6' }}>
           Enter your TradingView username to receive access to the indicator you purchased.
         </p>
 
         {message && (
           <div
             style={{
-              padding: '1rem',
-              marginBottom: '1.5rem',
-              borderRadius: '4px',
-              backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
-              color: message.type === 'success' ? '#155724' : '#721c24',
+              ...styles.message,
+              ...(message.type === 'success' ? styles.messageSuccess : styles.messageError),
             }}
           >
             {message.text}
@@ -98,10 +179,10 @@ export default function BuyerAccess() {
 
         <form onSubmit={handleGrantAccess}>
           {!getExperienceId() && (
-            <div style={{ marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
               <label
                 htmlFor="experienceId"
-                style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}
+                style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: '#1a1a1a' }}
               >
                 Experience ID:
               </label>
@@ -110,23 +191,22 @@ export default function BuyerAccess() {
                 type="text"
                 value={experienceId}
                 onChange={(e) => setExperienceId(e.target.value)}
+                onFocus={() => setFocusedInput('experienceId')}
+                onBlur={() => setFocusedInput(null)}
                 required
                 style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem',
+                  ...styles.input,
+                  ...(focusedInput === 'experienceId' ? styles.inputFocus : {}),
                 }}
                 placeholder="Enter the experience/product ID"
               />
             </div>
           )}
 
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '2rem' }}>
             <label
               htmlFor="tradingViewUsername"
-              style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}
+              style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: '#1a1a1a' }}
             >
               TradingView Username:
             </label>
@@ -135,17 +215,16 @@ export default function BuyerAccess() {
               type="text"
               value={tradingViewUsername}
               onChange={(e) => setTradingViewUsername(e.target.value)}
+              onFocus={() => setFocusedInput('tradingViewUsername')}
+              onBlur={() => setFocusedInput(null)}
               required
               style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem',
+                ...styles.input,
+                ...(focusedInput === 'tradingViewUsername' ? styles.inputFocus : {}),
               }}
               placeholder="Your TradingView username"
             />
-            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
+            <p style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: '#666' }}>
               This is the username you use to log into TradingView
             </p>
           </div>
@@ -154,32 +233,28 @@ export default function BuyerAccess() {
             type="submit"
             disabled={loading}
             style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: '#007bff',
-              color: 'white',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              fontWeight: 'bold',
+              ...styles.button,
+              opacity: loading ? 0.7 : 1,
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                Object.assign(e.currentTarget.style, styles.buttonHover)
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.currentTarget.style.transform = ''
+                e.currentTarget.style.boxShadow = styles.button.boxShadow
+              }
             }}
           >
-            {loading ? 'Granting Access...' : 'Grant Access'}
+            {loading ? 'Granting Access...' : '✨ Grant Access'}
           </button>
         </form>
 
-        <div
-          style={{
-            marginTop: '2rem',
-            padding: '1rem',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '4px',
-            fontSize: '0.9rem',
-            color: '#666',
-          }}
-        >
-          <strong>Note:</strong> After granting access, it may take a few moments for the
+        <div style={styles.infoBox}>
+          <strong style={{ color: '#1a1a1a' }}>💡 Note:</strong> After granting access, it may take a few moments for the
           indicator to appear in your TradingView account. If you don't see it, try refreshing
           your TradingView page.
         </div>

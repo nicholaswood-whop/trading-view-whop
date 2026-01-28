@@ -177,14 +177,27 @@ export async function POST(request: NextRequest) {
         logs.push(`💡 Tip: If you're the seller, access your dashboard at /dashboard/[companyId] to set up indicators`)
       }
       
+      // If owner/admin, return setupNeeded flag so frontend can show setup UI
+      if (isOwner) {
+        return NextResponse.json(
+          { 
+            error: 'No indicator found for this experience',
+            isOwner: true,
+            setupNeeded: true,
+            companyId: detectedCompanyId || null,
+            message: 'As a company owner/admin, you need to set up an indicator for this experience. The setup flow will appear automatically.',
+            logs,
+          },
+          { status: 404 }
+        )
+      }
+      
       return NextResponse.json(
         { 
           error: 'No indicator found for this experience',
-          isOwner,
+          isOwner: false,
           companyId: detectedCompanyId || null,
-          message: isOwner 
-            ? 'You need to connect your TradingView account and attach an indicator to this experience first. Go to your seller dashboard to set this up.'
-            : detectedCompanyId
+          message: detectedCompanyId
             ? `This experience does not have an indicator attached yet. If you are the seller, go to /dashboard/${detectedCompanyId} to set this up.`
             : 'This experience does not have an indicator attached yet. If you are the seller, go to your dashboard to set this up.',
           logs,

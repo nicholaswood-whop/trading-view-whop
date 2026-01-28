@@ -16,39 +16,76 @@ export async function verifyWhopToken(
   request: NextRequest
 ): Promise<WhopUserToken | null> {
   try {
-    const token = request.headers.get('x-whop-user-token')
+    // Try multiple possible header names for Whop token
+    let token = request.headers.get('x-whop-user-token')
+    if (!token) {
+      token = request.headers.get('x-whop-token')
+    }
+    if (!token) {
+      // Check Authorization header with Bearer token
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7)
+      }
+    }
     
     if (!token) {
-      console.log('[Auth] No x-whop-user-token header found')
+      console.log('[Auth] No Whop token found in any header')
+      // Log all headers for debugging
+      const headers: string[] = []
+      request.headers.forEach((value, key) => {
+        if (key.toLowerCase().includes('whop') || key.toLowerCase().includes('auth') || key.toLowerCase().includes('token')) {
+          headers.push(`${key}: ${value.substring(0, 30)}...`)
+        }
+      })
+      if (headers.length > 0) {
+        console.log('[Auth] Relevant headers found:', headers)
+      }
       return null
     }
 
-    console.log(`[Auth] Decoding JWT token...`)
+    console.log(`[Auth] Decoding JWT token (length: ${token.length})...`)
     // In production, verify with Whop's public key
     // For now, we'll decode without verification (Whop handles verification)
-    const decoded = jwt.decode(token) as WhopUserToken
+    const decoded = jwt.decode(token, { complete: true }) as jwt.JwtPayload | null
     
-    if (!decoded) {
-      console.log('[Auth] ✗ Failed to decode token')
+    if (!decoded || typeof decoded === 'string') {
+      console.log('[Auth] ✗ Failed to decode token or token is a string')
       return null
     }
     
+    // Extract payload (could be in 'payload' or directly in decoded)
+    const payload = decoded.payload || decoded
+    
+    console.log(`[Auth] Decoded token payload keys:`, Object.keys(payload))
     console.log(`[Auth] Decoded token:`, {
-      userId: decoded.userId,
-      companyId: decoded.companyId,
-      email: decoded.email,
-      iat: decoded.iat,
-      exp: decoded.exp,
+      userId: (payload as any).userId || (payload as any).user_id || (payload as any).sub,
+      companyId: (payload as any).companyId || (payload as any).company_id,
+      email: (payload as any).email,
+      iat: (payload as any).iat,
+      exp: (payload as any).exp,
     })
     
-    if (!decoded.userId || !decoded.companyId) {
-      console.log(`[Auth] ✗ Token missing required fields: userId=${!!decoded.userId}, companyId=${!!decoded.companyId}`)
+    // Map different possible field names
+    const userId = (payload as any).userId || (payload as any).user_id || (payload as any).sub || ''
+    const companyId = (payload as any).companyId || (payload as any).company_id || ''
+    
+    if (!userId || !companyId) {
+      console.log(`[Auth] ✗ Token missing required fields: userId=${!!userId}, companyId=${!!companyId}`)
+      console.log(`[Auth] Full payload:`, JSON.stringify(payload, null, 2))
       return null
     }
 
-    return decoded
+    return {
+      userId,
+      companyId,
+      email: (payload as any).email,
+      iat: (payload as any).iat,
+      exp: (payload as any).exp,
+    }
   } catch (error: any) {
     console.error('[Auth] ✗ Error verifying Whop token:', error.message)
+    console.error('[Auth] Error stack:', error.stack)
     return null
   }
 }

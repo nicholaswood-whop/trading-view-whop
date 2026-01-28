@@ -123,6 +123,14 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
           const params = new URLSearchParams(window.location.search)
           setExperienceId(params.get('experienceId') || '')
         }
+        
+        // Log iframe context for debugging
+        const isInIframe = window.self !== window.top
+        console.log('[BuyerAccess] Iframe context:', {
+          isInIframe,
+          hasWhopContext: !!whopContext,
+          whopContextKeys: whopContext ? Object.keys(whopContext) : [],
+        })
       }
     }
   }, [propExperienceId])
@@ -164,12 +172,24 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
       // Get Whop user context if available (from iframe)
       const whopContext = typeof window !== 'undefined' ? (window as any).whop : null
       const userId = whopContext?.userId || whopContext?.user_id || null
+      
+      // Log what we're sending for debugging
+      console.log('[BuyerAccess] Making request with:', {
+        hasWhopContext: !!whopContext,
+        userId,
+        experienceId: expId,
+        hasToken: !!(whopContext?.token),
+        isInIframe: typeof window !== 'undefined' ? window.self !== window.top : false,
+      })
 
+      // NOTE: Whop should automatically add x-whop-user-token header to all requests
+      // from the iframe. We don't need to manually pass it, but we can try if available.
+      // The backend will check for the header automatically.
       const response = await fetch('/api/buyer/access', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          // Pass Whop token if available in iframe context
+          // Only pass token if explicitly available in context (though Whop should add it automatically)
           ...(whopContext?.token ? { 'x-whop-user-token': whopContext.token } : {}),
         },
         body: JSON.stringify({

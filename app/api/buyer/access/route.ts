@@ -32,6 +32,24 @@ export async function POST(request: NextRequest) {
     }
     logs.push('✓ DATABASE_URL is configured')
 
+    // Log ALL headers to see what Whop is actually sending
+    const allHeaders: Record<string, string> = {}
+    request.headers.forEach((value, key) => {
+      allHeaders[key] = key.toLowerCase().includes('token') || key.toLowerCase().includes('auth') 
+        ? `${value.substring(0, 20)}...` // Truncate tokens for security
+        : value
+    })
+    logs.push(`📋 Request headers received: ${JSON.stringify(Object.keys(allHeaders))}`)
+    
+    // Check for Whop token in headers (Whop automatically adds this in iframe)
+    const whopToken = request.headers.get('x-whop-user-token')
+    logs.push(`🔑 Whop token present: ${!!whopToken}, length: ${whopToken?.length || 0}`)
+    
+    // Also check for other possible Whop auth headers
+    const authHeader = request.headers.get('authorization')
+    const whopAuthHeader = request.headers.get('x-whop-auth')
+    logs.push(`🔑 Authorization header: ${!!authHeader}, x-whop-auth: ${!!whopAuthHeader}`)
+
     // For buyer access, we need to be more flexible with authentication
     // Buyers may access through Whop iframe with different auth context
     logs.push('🔐 Checking authentication...')
@@ -47,6 +65,9 @@ export async function POST(request: NextRequest) {
       logs.push(`✓ Authenticated user found: userId=${userId}, companyId=${companyId}`)
     } else {
       logs.push('⚠️ No authenticated user from token header')
+      if (whopToken) {
+        logs.push(`⚠️ Token exists but failed to decode. Token preview: ${whopToken.substring(0, 50)}...`)
+      }
     }
 
     const body = await request.json()
@@ -122,15 +143,19 @@ export async function POST(request: NextRequest) {
         // If we have userId, check directly
         if (userId) {
           try {
+            logs.push(`🔍 Checking if user ${userId} is owner/admin of company ${detectedCompanyId}...`)
             isOwner = await whopClient.isUserOwnerOrAdmin(userId, detectedCompanyId)
-            logs.push(`🔍 Owner check for company ${detectedCompanyId}: ${isOwner ? 'YES' : 'NO'}`)
+            logs.push(`🔍 Owner check for company ${detectedCompanyId}: ${isOwner ? 'YES - User is owner/admin' : 'NO - User is not owner/admin'}`)
           } catch (error: any) {
             logs.push(`⚠️ Could not check owner status: ${error.message}`)
+            logs.push(`⚠️ Error details: ${JSON.stringify(error)}`)
           }
         } else {
           // Try to get userId from Whop context or other means
           logs.push(`⚠️ No userId available for owner check, but companyId=${detectedCompanyId} was found`)
+          logs.push(`💡 This usually means the JWT token wasn't passed correctly from Whop iframe`)
           logs.push(`💡 If you're the seller, you can access your dashboard at /dashboard/${detectedCompanyId}`)
+          logs.push(`💡 The token should be automatically added by Whop in the x-whop-user-token header`)
         }
       } else {
         logs.push(`⚠️ Cannot determine companyId from experience/product`)

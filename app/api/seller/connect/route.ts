@@ -19,6 +19,15 @@ export async function POST(request: NextRequest) {
     
     let user = await getAuthenticatedUser(request)
     
+    // If user exists but doesn't have companyId, and we have companyId from body, use it
+    // This handles the case where token has userId but not companyId (normal for Whop tokens)
+    if (user && !user.companyId && bodyCompanyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: bodyCompanyId,
+      })
+    }
+    
     // If we have companyId from body and no auth, allow access with companyId override
     if (!user && bodyCompanyId) {
       user = await getAuthenticatedUser(request, {
@@ -132,6 +141,15 @@ export async function DELETE(request: NextRequest) {
     const { companyId: bodyCompanyId } = body
     
     let user = await getAuthenticatedUser(request)
+    
+    // If user exists but doesn't have companyId, and we have companyId from body, use it
+    // This handles the case where token has userId but not companyId (normal for Whop tokens)
+    if (user && !user.companyId && bodyCompanyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: bodyCompanyId,
+      })
+    }
     
     // If we have companyId from body and no auth, allow access with companyId override
     if (!user && bodyCompanyId) {

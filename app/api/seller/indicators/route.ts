@@ -20,6 +20,15 @@ export async function GET(request: NextRequest) {
     
     let user = await getAuthenticatedUser(request)
     
+    // If user exists but doesn't have companyId, and we have companyId from URL, use it
+    // This handles the case where token has userId but not companyId (normal for Whop tokens)
+    if (user && !user.companyId && companyIdParam) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: companyIdParam,
+      })
+    }
+    
     // If we have companyId from URL and no auth, allow access with companyId override
     if (!user && companyIdParam) {
       user = await getAuthenticatedUser(request, {
@@ -77,6 +86,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const { companyId: bodyCompanyId } = body
     const companyId = companyIdParam || bodyCompanyId
+    
+    // If user exists but doesn't have companyId, and we have companyId from URL/body, use it
+    // This handles the case where token has userId but not companyId (normal for Whop tokens)
+    if (user && !user.companyId && companyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: companyId,
+      })
+    }
     
     if (!user && companyId) {
       user = await getAuthenticatedUser(request, {

@@ -26,6 +26,15 @@ export async function POST(
     const { experienceId, companyId: bodyCompanyId } = body
     const companyId = companyIdParam || bodyCompanyId
     
+    // If user exists but doesn't have companyId, and we have companyId from URL/body, use it
+    // This handles the case where token has userId but not companyId (normal for Whop tokens)
+    if (user && !user.companyId && companyId) {
+      user = await getAuthenticatedUser(request, {
+        allowCompanyIdOverride: true,
+        companyId: companyId,
+      })
+    }
+    
     if (!user && companyId) {
       user = await getAuthenticatedUser(request, {
         allowCompanyIdOverride: true,

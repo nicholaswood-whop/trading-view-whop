@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// TradingView account connection for sellers
+model TradingViewConnection {
+  id            String   @id @default(cuid())
+  companyId     String   // Whop company ID
+  sessionId     String   // TradingView sessionid cookie
+  sessionIdSign String   // TradingView sessionid_sign cookie
+  username      String?  // TradingView username (optional, for verification)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  indicators TradingViewIndicator[]
+
+  @@unique([companyId])
+  @@index([companyId])
+}
+
+// TradingView indicators imported from seller's account
+model TradingViewIndicator {
+  id                      String   @id @default(cuid())
+  connectionId            String
+  connection              TradingViewConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  tradingViewId           String   // TradingView's internal ID for the indicator
+  name                    String   // Indicator name from TradingView
+  scriptId                String?  // TradingView script ID
+  experienceId            String?  // Whop experience/product ID this is attached to
+  companyId               String   // Whop company ID
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  userAccesses UserIndicatorAccess[]
+
+  @@unique([connectionId, tradingViewId])
+  @@index([companyId])
+  @@index([experienceId])
+}
+
+// Mapping of buyers to indicators they have access to
+model UserIndicatorAccess {
+  id                String   @id @default(cuid())
+  userId            String   // Whop user ID
+  tradingViewUserId String   // Buyer's TradingView username
+  indicatorId       String
+  indicator         TradingViewIndicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  membershipId      String?  // Whop membership ID
+  isActive          Boolean  @default(true)
+  grantedAt         DateTime @default(now())
+  revokedAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, indicatorId])
+  @@index([userId])
+  @@index([tradingViewUserId])
+  @@index([membershipId])
+  @@index([isActive])
+}
+
+// Webhook events log for debugging
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  eventType String   // membership.created, membership.updated, etc.
+  payload   Json     // Full webhook payload
+  processed Boolean  @default(false)
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
+  @@index([processed])
+}

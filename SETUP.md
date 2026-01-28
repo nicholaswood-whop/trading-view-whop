@@ -12,8 +12,15 @@ NEXT_PUBLIC_WHOP_APP_ID=app_qwPSm3eGDCDIJK
 # Whop Webhook Secret (get this from your Whop developer dashboard)
 WHOP_WEBHOOK_SECRET=your_webhook_secret_here
 
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/whop_tradingview?schema=public"
+# Supabase Database
+# Get your connection string from: Supabase Dashboard > Settings > Database > Connection string
+# Use the "URI" format for Prisma migrations
+DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?pgbouncer=true&connection_limit=1"
+
+# Supabase Configuration (optional, for direct Supabase features)
+NEXT_PUBLIC_SUPABASE_URL=https://[PROJECT-REF].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # JWT Secret for token verification (optional)
 JWT_SECRET=your_jwt_secret_here
@@ -33,28 +40,46 @@ JWT_SECRET=your_jwt_secret_here
    npm install
    ```
 
-2. **Set up database:**
+2. **Set up Supabase:**
+   - Create a project at https://supabase.com
+   - Get your database connection string from: Settings > Database > Connection string
+   - Copy the "URI" format and add it to `.env` as `DATABASE_URL`
+   - (Optional) Add Supabase URL and keys for direct Supabase features
+   
+3. **Set up database schema:**
    ```bash
    npx prisma generate
    npx prisma migrate dev --name init
    ```
+   
+   **Note:** For Supabase, you may need to use the direct connection (not pooled) for migrations:
+   ```bash
+   # Use direct connection for migrations
+   DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres" npx prisma migrate dev
+   ```
 
-3. **Verify configuration:**
+4. **Verify configuration:**
    ```bash
    curl http://localhost:3000/api/config/verify
    ```
 
-4. **Start development server:**
+5. **Start development server:**
    ```bash
    npm run dev
    ```
 
 ## Next Steps
 
-1. Set up your PostgreSQL database and update `DATABASE_URL`
-2. Get your webhook secret from Whop dashboard and add it to `.env`
-3. Configure webhook URL in Whop dashboard: `https://your-domain.com/api/webhooks/whop`
-4. Test the connection with a real TradingView account
+1. **Set up Supabase:**
+   - Create a project at https://supabase.com
+   - Get your database connection string and add it to `.env`
+   - Run migrations: `npx prisma migrate dev`
+   
+2. **Get your webhook secret** from Whop dashboard and add it to `.env`
+
+3. **Configure webhook URL** in Whop dashboard: `https://your-domain.com/api/webhooks/whop`
+
+4. **Test the connection** with a real TradingView account
 
 ## Testing the API
 

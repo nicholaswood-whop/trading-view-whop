@@ -19,7 +19,7 @@ A Whop app that enables sellers to monetize their TradingView indicators by auto
 
 ### Prerequisites
 - Node.js 18+ and npm/yarn
-- PostgreSQL database
+- Supabase account (for database)
 - Whop API key
 - Whop webhook secret
 
@@ -36,11 +36,17 @@ cp .env.example .env
 # Edit .env with your credentials
 ```
 
-3. Set up the database:
-```bash
-npx prisma generate
-npx prisma migrate dev --name init
-```
+3. Set up Supabase database:
+   - Create a project at https://supabase.com
+   - Get your connection string from Settings > Database
+   - Add it to `.env` as `DATABASE_URL`
+   - Run migrations:
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev --name init
+   ```
+   
+   See `SUPABASE_SETUP.md` for detailed Supabase setup instructions.
 
 4. Run the development server:
 ```bash
@@ -54,7 +60,10 @@ Required environment variables (see `SETUP.md` for current configuration):
 - `WHOP_API_KEY`: Your Whop API key from the developer dashboard
 - `NEXT_PUBLIC_WHOP_APP_ID`: Your Whop App ID (for client-side use)
 - `WHOP_WEBHOOK_SECRET`: Secret for verifying webhook requests
-- `DATABASE_URL`: PostgreSQL connection string
+- `DATABASE_URL`: Supabase PostgreSQL connection string
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (optional, for direct Supabase features)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key (optional)
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (optional, for admin operations)
 - `JWT_SECRET`: Secret for JWT token verification (optional, Whop handles verification)
 
 **Current Configuration:**

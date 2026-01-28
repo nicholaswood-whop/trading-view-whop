@@ -66,7 +66,16 @@ export async function POST(request: NextRequest) {
     } else {
       logs.push('⚠️ No authenticated user from token header')
       if (whopToken) {
-        logs.push(`⚠️ Token exists but failed to decode. Token preview: ${whopToken.substring(0, 50)}...`)
+        logs.push(`⚠️ Token exists but failed to decode. Token length: ${whopToken.length}`)
+        logs.push(`⚠️ Token preview (first 100 chars): ${whopToken.substring(0, 100)}`)
+        // Check token format
+        const parts = whopToken.split('.')
+        if (parts.length !== 3) {
+          logs.push(`⚠️ Token format issue: Expected 3 parts separated by dots, got ${parts.length} parts`)
+        } else {
+          logs.push(`⚠️ Token has correct format (3 parts), but decoding failed`)
+          logs.push(`⚠️ This might mean the token payload structure is different than expected`)
+        }
       }
     }
 

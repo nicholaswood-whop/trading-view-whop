@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import jwt from 'jsonwebtoken'
+import jwt, { Jwt, JwtPayload } from 'jsonwebtoken'
 
 export interface WhopUserToken {
   userId: string
@@ -45,20 +45,57 @@ export async function verifyWhopToken(
     }
 
     console.log(`[Auth] Decoding JWT token (length: ${token.length})...`)
+    console.log(`[Auth] Token preview (first 50 chars): ${token.substring(0, 50)}`)
+    
+    // Check if token looks like a JWT (should have 3 parts separated by dots)
+    const tokenParts = token.split('.')
+    if (tokenParts.length !== 3) {
+      console.log(`[Auth] ✗ Token doesn't have 3 parts (has ${tokenParts.length}). Not a valid JWT format.`)
+      console.log(`[Auth] Token parts: ${tokenParts.map((p, i) => `Part ${i}: ${p.substring(0, 20)}...`).join(', ')}`)
+      return null
+    }
+    
     // NOTE: We decode without verification because:
     // 1. Whop already verifies the token on their end before sending it
     // 2. The token is sent over HTTPS in the iframe context
     // 3. We don't have Whop's public key, and don't need it since Whop handles verification
     // If you want extra security, you could fetch Whop's public key and verify, but it's not required
-    const decoded = jwt.decode(token, { complete: true }) as jwt.JwtPayload | null
+    let decoded: jwt.JwtPayload | string | null = null
+    try {
+      decoded = jwt.decode(token, { complete: true })
+    } catch (decodeError: any) {
+      console.error('[Auth] ✗ JWT decode threw an error:', decodeError.message)
+      console.error('[Auth] Error details:', decodeError)
+      return null
+    }
     
-    if (!decoded || typeof decoded === 'string') {
-      console.log('[Auth] ✗ Failed to decode token or token is a string')
+    if (!decoded) {
+      console.log('[Auth] ✗ jwt.decode returned null')
+      return null
+    }
+    
+    if (typeof decoded === 'string') {
+      console.log('[Auth] ✗ Decoded token is a string, not an object')
+      const decodedStr = decoded as string
+      console.log('[Auth] Decoded string:', decodedStr.substring(0, 100))
       return null
     }
     
     // Extract payload (could be in 'payload' or directly in decoded)
-    const payload = decoded.payload || decoded
+    const jwtObj = decoded as Jwt
+    const payload = jwtObj.payload || decoded as JwtPayload
+    
+    console.log(`[Auth] Decoded token structure:`, {
+      hasHeader: !!jwtObj.header,
+      hasPayload: !!jwtObj.payload,
+      payloadType: typeof payload,
+      payloadKeys: payload && typeof payload === 'object' ? Object.keys(payload) : 'not an object',
+    })
+    
+    if (!payload || typeof payload !== 'object') {
+      console.log(`[Auth] ✗ Payload is not an object:`, typeof payload, payload)
+      return null
+    }
     
     console.log(`[Auth] Decoded token payload keys:`, Object.keys(payload))
     console.log(`[Auth] Decoded token:`, {

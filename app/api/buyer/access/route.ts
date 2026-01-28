@@ -61,10 +61,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const whopClient = new WhopClient()
+
     // If we don't have userId yet, we need to get it from membership
     if (!userId && membershipId) {
       try {
-        const whopClient = new WhopClient()
         const membership = await whopClient.getMembership(membershipId)
         if (membership) {
           userId = membership.user_id
@@ -79,6 +80,77 @@ export async function POST(request: NextRequest) {
         { error: 'Unable to determine user. Please ensure you are logged in.' },
         { status: 401 }
       )
+    }
+
+    // Check if user is company owner or admin - they get automatic access
+    let isOwnerOrAdmin = false
+    if (indicator.companyId) {
+      try {
+        isOwnerOrAdmin = await whopClient.isUserOwnerOrAdmin(userId, indicator.companyId)
+        
+        if (isOwnerOrAdmin) {
+          // Owner/admin gets automatic access - check if already exists
+          let ownerAccess = await prisma.userIndicatorAccess.findUnique({
+            where: {
+              userId_indicatorId: {
+                userId,
+                indicatorId: indicator.id,
+              },
+            },
+          })
+
+          if (!ownerAccess) {
+            // Create access record for owner/admin
+            ownerAccess = await prisma.userIndicatorAccess.create({
+              data: {
+                userId,
+                tradingViewUserId: tradingViewUsername.trim(),
+                indicatorId: indicator.id,
+                membershipId: null, // Owners don't need membership
+                isActive: true,
+              },
+            })
+          } else if (!ownerAccess.isActive) {
+            // Reactivate if it was revoked
+            ownerAccess = await prisma.userIndicatorAccess.update({
+              where: { id: ownerAccess.id },
+              data: {
+                isActive: true,
+                tradingViewUserId: tradingViewUsername.trim(),
+                updatedAt: new Date(),
+              },
+            })
+          }
+
+          // Grant access on TradingView
+          const tvClient = new TradingViewClient(
+            indicator.connection.sessionId,
+            indicator.connection.sessionIdSign
+          )
+
+          const granted = await tvClient.grantAccess(
+            indicator.tradingViewId,
+            tradingViewUsername.trim()
+          )
+
+          if (granted) {
+            return NextResponse.json({
+              success: true,
+              message: 'Access granted! As a company owner/admin, you have automatic access to all indicators.',
+              access: ownerAccess,
+              isOwnerOrAdmin: true,
+            })
+          } else {
+            return NextResponse.json(
+              { error: 'Failed to grant access on TradingView. Please verify your username.' },
+              { status: 500 }
+            )
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error)
+        // Continue with normal flow if role check fails
+      }
     }
 
     // Check if access already exists

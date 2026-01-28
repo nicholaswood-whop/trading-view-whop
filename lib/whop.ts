@@ -122,6 +122,54 @@ export class WhopClient {
   }
 
   /**
+   * Check if a user is an owner or admin of a company
+   * Uses the authorizedUsers endpoint to check user roles
+   * @param userId The user ID to check
+   * @param companyId The company ID to check against
+   * @returns true if user is owner or admin, false otherwise
+   */
+  async isUserOwnerOrAdmin(userId: string, companyId: string): Promise<boolean> {
+    try {
+      // List authorized users for the company, filtering by user_id for efficiency
+      const authorizedUsers = this.client.authorizedUsers.list({
+        company_id: companyId,
+        user_id: userId, // Filter by user_id to only get this user's authorized status
+      })
+
+      // Check if user is in the authorized users list with owner/admin role
+      for await (const authorizedUser of authorizedUsers) {
+        // The user object contains the user ID
+        if (authorizedUser.user?.id === userId) {
+          // Check if role is owner or admin
+          const role = authorizedUser.role
+          if (role === 'owner' || role === 'admin') {
+            return true
+          }
+        }
+      }
+
+      return false
+    } catch (error: any) {
+      console.error('Error checking user role:', error)
+      // If we can't check, return false to be safe
+      return false
+    }
+  }
+
+  /**
+   * Get company details
+   */
+  async getCompany(companyId: string): Promise<any> {
+    try {
+      const company = await this.client.companies.retrieve(companyId)
+      return company
+    } catch (error: any) {
+      console.error('Error fetching company:', error)
+      return null
+    }
+  }
+
+  /**
    * Get the underlying Whop SDK client for advanced usage
    * This allows direct access to all SDK methods like:
    * - client.memberships.list()

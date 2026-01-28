@@ -181,16 +181,24 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
       const data = await response.json()
 
       if (response.ok) {
-        setMessage({
-          type: 'success',
-          text: '✨ Access granted! You should now have access to the indicator on TradingView. Access will be automatically managed based on your membership status.',
-        })
+        if (data.isOwnerOrAdmin) {
+          setMessage({
+            type: 'success',
+            text: '✨ Access granted! As a company owner/admin, you have automatic access to all indicators.',
+          })
+        } else {
+          setMessage({
+            type: 'success',
+            text: '✨ Access granted! You should now have access to the indicator on TradingView. Access will be automatically managed based on your membership status.',
+          })
+        }
         setTradingViewUsername('')
         setAccessGranted(true)
         
         // Note: Access will be automatically managed via webhooks:
         // - When membership is active: access is granted
         // - When membership is cancelled/expired: access is revoked
+        // - Owners/admins always have access
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to grant access' })
       }

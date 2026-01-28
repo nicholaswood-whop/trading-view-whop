@@ -21,7 +21,7 @@ export default function ExperiencePage({
     const id = params?.experienceId || ''
     setExperienceId(id)
 
-    // Try to get membershipId from Whop context or URL params
+    // Try to get membershipId and check if user is owner/admin
     if (typeof window !== 'undefined') {
       // Check Whop iframe context
       const whopContext = (window as any).whop
@@ -31,6 +31,12 @@ export default function ExperiencePage({
         // Fall back to URL params
         const urlParams = new URLSearchParams(window.location.search)
         setMembershipId(urlParams.get('membershipId'))
+      }
+
+      // Check if user is owner/admin - they get automatic access
+      // This will be handled on the backend, but we can show a message
+      if (whopContext?.isOwner || whopContext?.isAdmin) {
+        // Owner/admin - access will be granted automatically
       }
     }
   }, [params])

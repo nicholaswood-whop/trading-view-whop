@@ -45,7 +45,7 @@ export async function verifyWhopToken(
     }
 
     console.log(`[Auth] Decoding JWT token (length: ${token.length})...`)
-    console.log(`[Auth] Token preview (first 50 chars): ${token.substring(0, 50)}`)
+    console.log(`[Auth] Token preview (first 100 chars): ${token.substring(0, 100)}`)
     
     // Check if token looks like a JWT (should have 3 parts separated by dots)
     const tokenParts = token.split('.')
@@ -53,6 +53,17 @@ export async function verifyWhopToken(
       console.log(`[Auth] ✗ Token doesn't have 3 parts (has ${tokenParts.length}). Not a valid JWT format.`)
       console.log(`[Auth] Token parts: ${tokenParts.map((p, i) => `Part ${i}: ${p.substring(0, 20)}...`).join(', ')}`)
       return null
+    }
+    
+    // Try to manually decode the payload to see what's in it (for debugging)
+    try {
+      const payloadBase64 = tokenParts[1]
+      const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8')
+      const manualPayload = JSON.parse(payloadJson)
+      console.log(`[Auth] Manually decoded payload keys:`, Object.keys(manualPayload))
+      console.log(`[Auth] Manually decoded payload:`, JSON.stringify(manualPayload, null, 2))
+    } catch (manualError: any) {
+      console.log(`[Auth] Could not manually decode payload: ${manualError.message}`)
     }
     
     // NOTE: We decode without verification because:
@@ -63,6 +74,12 @@ export async function verifyWhopToken(
     let decoded: jwt.JwtPayload | string | null = null
     try {
       decoded = jwt.decode(token, { complete: true })
+      console.log(`[Auth] jwt.decode() returned:`, {
+        type: typeof decoded,
+        isNull: decoded === null,
+        isString: typeof decoded === 'string',
+        isObject: typeof decoded === 'object' && decoded !== null,
+      })
     } catch (decodeError: any) {
       console.error('[Auth] ✗ JWT decode threw an error:', decodeError.message)
       console.error('[Auth] Error details:', decodeError)
@@ -70,7 +87,7 @@ export async function verifyWhopToken(
     }
     
     if (!decoded) {
-      console.log('[Auth] ✗ jwt.decode returned null')
+      console.log('[Auth] ✗ jwt.decode returned null - token might be malformed')
       return null
     }
     
@@ -87,6 +104,7 @@ export async function verifyWhopToken(
     
     console.log(`[Auth] Decoded token structure:`, {
       hasHeader: !!jwtObj.header,
+      headerAlg: jwtObj.header?.alg,
       hasPayload: !!jwtObj.payload,
       payloadType: typeof payload,
       payloadKeys: payload && typeof payload === 'object' ? Object.keys(payload) : 'not an object',
@@ -98,21 +116,25 @@ export async function verifyWhopToken(
     }
     
     console.log(`[Auth] Decoded token payload keys:`, Object.keys(payload))
-    console.log(`[Auth] Decoded token:`, {
-      userId: (payload as any).userId || (payload as any).user_id || (payload as any).sub,
-      companyId: (payload as any).companyId || (payload as any).company_id,
-      email: (payload as any).email,
-      iat: (payload as any).iat,
-      exp: (payload as any).exp,
-    })
+    console.log(`[Auth] Decoded token full payload:`, JSON.stringify(payload, null, 2))
     
-    // Map different possible field names
+    // Map different possible field names - Whop uses 'sub' for user ID
     const userId = (payload as any).userId || (payload as any).user_id || (payload as any).sub || ''
-    const companyId = (payload as any).companyId || (payload as any).company_id || ''
+    const companyId = (payload as any).companyId || (payload as any).company_id || (payload as any).company_id || ''
+    
+    console.log(`[Auth] Extracted values:`, {
+      userId,
+      companyId,
+      hasUserId: !!userId,
+      hasCompanyId: !!companyId,
+      allPayloadKeys: Object.keys(payload),
+    })
     
     if (!userId || !companyId) {
       console.log(`[Auth] ✗ Token missing required fields: userId=${!!userId}, companyId=${!!companyId}`)
       console.log(`[Auth] Full payload:`, JSON.stringify(payload, null, 2))
+      // If we have userId but no companyId, we might need to get it from the experience
+      // But for now, we need both
       return null
     }
 

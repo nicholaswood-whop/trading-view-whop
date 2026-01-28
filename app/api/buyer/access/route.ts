@@ -61,8 +61,10 @@ export async function POST(request: NextRequest) {
     
     if (user) {
       userId = user.userId
-      companyId = user.companyId
-      logs.push(`✓ Authenticated user found: userId=${userId}, companyId=${companyId}`)
+      // Note: Whop tokens don't include companyId, so it might be empty here
+      // We'll get companyId from experience lookup below
+      companyId = user.companyId || null
+      logs.push(`✓ Authenticated user found: userId=${userId}, companyId=${companyId || 'will get from experience'}`)
     } else {
       logs.push('⚠️ No authenticated user from token header')
       if (whopToken) {
@@ -147,22 +149,26 @@ export async function POST(request: NextRequest) {
       // Try to check if they're the owner using the detected companyId
       let isOwner = false
       
-      // If we have companyId from product lookup, try to check owner status
+      // If we have companyId from experience lookup, try to check owner status
       if (detectedCompanyId) {
-        // If we have userId, check directly
+        // If we have userId from token, check directly
         if (userId) {
           try {
             logs.push(`🔍 Checking if user ${userId} is owner/admin of company ${detectedCompanyId}...`)
             isOwner = await whopClient.isUserOwnerOrAdmin(userId, detectedCompanyId)
             logs.push(`🔍 Owner check for company ${detectedCompanyId}: ${isOwner ? 'YES - User is owner/admin' : 'NO - User is not owner/admin'}`)
+            
+            if (isOwner) {
+              logs.push(`👑 User is owner/admin - they should have automatic access to set up indicators`)
+            }
           } catch (error: any) {
             logs.push(`⚠️ Could not check owner status: ${error.message}`)
             logs.push(`⚠️ Error details: ${JSON.stringify(error)}`)
           }
         } else {
-          // Try to get userId from Whop context or other means
+          // No userId from token - this means token decode failed
           logs.push(`⚠️ No userId available for owner check, but companyId=${detectedCompanyId} was found`)
-          logs.push(`💡 This usually means the JWT token wasn't passed correctly from Whop iframe`)
+          logs.push(`💡 This usually means the JWT token wasn't decoded correctly`)
           logs.push(`💡 If you're the seller, you can access your dashboard at /dashboard/${detectedCompanyId}`)
           logs.push(`💡 The token should be automatically added by Whop in the x-whop-user-token header`)
         }

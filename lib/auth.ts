@@ -120,7 +120,11 @@ export async function verifyWhopToken(
     
     // Map different possible field names - Whop uses 'sub' for user ID
     const userId = (payload as any).userId || (payload as any).user_id || (payload as any).sub || ''
-    const companyId = (payload as any).companyId || (payload as any).company_id || (payload as any).company_id || ''
+    
+    // NOTE: Whop's JWT token does NOT include companyId in the token payload
+    // The token only contains: iat, exp, sub (user ID), iss, aud
+    // We need to get companyId from the experience/product lookup instead
+    const companyId = (payload as any).companyId || (payload as any).company_id || ''
     
     console.log(`[Auth] Extracted values:`, {
       userId,
@@ -130,17 +134,23 @@ export async function verifyWhopToken(
       allPayloadKeys: Object.keys(payload),
     })
     
-    if (!userId || !companyId) {
-      console.log(`[Auth] ✗ Token missing required fields: userId=${!!userId}, companyId=${!!companyId}`)
+    // We only need userId from the token - companyId will come from experience lookup
+    if (!userId) {
+      console.log(`[Auth] ✗ Token missing userId (sub field): userId=${!!userId}`)
       console.log(`[Auth] Full payload:`, JSON.stringify(payload, null, 2))
-      // If we have userId but no companyId, we might need to get it from the experience
-      // But for now, we need both
       return null
     }
+    
+    // If we don't have companyId in token, that's okay - we'll get it from experience
+    if (!companyId) {
+      console.log(`[Auth] ⚠️ Token doesn't include companyId (this is normal for Whop tokens)`)
+      console.log(`[Auth] ⚠️ companyId will be obtained from experience/product lookup`)
+    }
 
+    // Return userId from token, companyId can be empty (will be filled from experience lookup)
     return {
       userId,
-      companyId,
+      companyId: companyId || '', // May be empty, will be filled from experience
       email: (payload as any).email,
       iat: (payload as any).iat,
       exp: (payload as any).exp,

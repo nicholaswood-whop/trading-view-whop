@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const styles = {
   container: {
@@ -94,21 +94,50 @@ const styles = {
   },
 }
 
-export default function BuyerAccess() {
+interface BuyerAccessProps {
+  experienceId?: string
+  membershipId?: string | null
+}
+
+export default function BuyerAccess({ experienceId: propExperienceId, membershipId: propMembershipId }: BuyerAccessProps = {} as BuyerAccessProps) {
   const [tradingViewUsername, setTradingViewUsername] = useState('')
-  const [experienceId, setExperienceId] = useState('')
+  const [experienceId, setExperienceId] = useState(propExperienceId || '')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [focusedInput, setFocusedInput] = useState<string | null>(null)
+  const [accessGranted, setAccessGranted] = useState(false)
+
+  useEffect(() => {
+    // If experienceId is provided as prop, use it
+    if (propExperienceId) {
+      setExperienceId(propExperienceId)
+    } else {
+      // Try to get from Whop context or URL
+      if (typeof window !== 'undefined') {
+        const whopContext = (window as any).whop
+        if (whopContext?.experienceId) {
+          setExperienceId(whopContext.experienceId)
+        } else {
+          const params = new URLSearchParams(window.location.search)
+          setExperienceId(params.get('experienceId') || '')
+        }
+      }
+    }
+  }, [propExperienceId])
 
   const getExperienceId = () => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('experienceId') || experienceId
+    return experienceId || propExperienceId || ''
   }
 
   const getMembershipId = () => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('membershipId') || null
+    if (propMembershipId) return propMembershipId
+    if (typeof window !== 'undefined') {
+      const whopContext = (window as any).whop
+      if (whopContext?.membershipId) return whopContext.membershipId
+      const params = new URLSearchParams(window.location.search)
+      return params.get('membershipId')
+    }
+    return null
   }
 
   const handleGrantAccess = async (e: React.FormEvent) => {
@@ -145,9 +174,14 @@ export default function BuyerAccess() {
       if (response.ok) {
         setMessage({
           type: 'success',
-          text: '✨ Access granted! You should now have access to the indicator on TradingView.',
+          text: '✨ Access granted! You should now have access to the indicator on TradingView. Access will be automatically managed based on your membership status.',
         })
         setTradingViewUsername('')
+        setAccessGranted(true)
+        
+        // Note: Access will be automatically managed via webhooks:
+        // - When membership is active: access is granted
+        // - When membership is cancelled/expired: access is revoked
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to grant access' })
       }
@@ -164,6 +198,10 @@ export default function BuyerAccess() {
         <h1 style={styles.title}>Get TradingView Indicator Access</h1>
         <p style={{ marginBottom: '2rem', color: '#666', lineHeight: '1.6' }}>
           Enter your TradingView username to receive access to the indicator you purchased.
+          <br />
+          <span style={{ fontSize: '0.9rem', color: '#10b981', marginTop: '0.5rem', display: 'block' }}>
+            ✓ Access is automatically managed based on your membership status
+          </span>
         </p>
 
         {message && (

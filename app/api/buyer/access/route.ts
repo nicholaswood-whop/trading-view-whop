@@ -88,25 +88,39 @@ export async function POST(request: NextRequest) {
       // If user is owner/admin, they should set up the indicator first
       // Try to get companyId to check if they're the owner
       let isOwner = false
-      if (companyId && userId) {
+      let detectedCompanyId = companyId
+      
+      // Try to get companyId from product if we have experienceId
+      if (!detectedCompanyId && experienceId) {
         try {
-          isOwner = await whopClient.isUserOwnerOrAdmin(userId, companyId)
-          logs.push(`🔍 Owner check for company ${companyId}: ${isOwner ? 'YES' : 'NO'}`)
+          // Experience ID might be a product ID - try to get product info
+          logs.push(`🔍 Trying to get companyId from experience/product...`)
+          // Note: We'd need product API access, but for now we'll suggest dashboard access
+        } catch (error: any) {
+          logs.push(`⚠️ Could not get company from experience: ${error.message}`)
+        }
+      }
+      
+      if (detectedCompanyId && userId) {
+        try {
+          isOwner = await whopClient.isUserOwnerOrAdmin(userId, detectedCompanyId)
+          logs.push(`🔍 Owner check for company ${detectedCompanyId}: ${isOwner ? 'YES' : 'NO'}`)
         } catch (error: any) {
           logs.push(`⚠️ Could not check owner status: ${error.message}`)
         }
       } else {
-        logs.push(`⚠️ Cannot check owner status: companyId=${companyId || 'none'}, userId=${userId || 'none'}`)
+        logs.push(`⚠️ Cannot check owner status: companyId=${detectedCompanyId || 'none'}, userId=${userId || 'none'}`)
+        logs.push(`💡 Tip: If you're the seller, access your dashboard at /dashboard/[companyId] to set up indicators`)
       }
       
       return NextResponse.json(
         { 
           error: 'No indicator found for this experience',
           isOwner,
-          companyId: companyId || null,
+          companyId: detectedCompanyId || null,
           message: isOwner 
             ? 'You need to connect your TradingView account and attach an indicator to this experience first. Go to your seller dashboard to set this up.'
-            : 'This experience does not have an indicator attached yet. Please contact the seller.',
+            : 'This experience does not have an indicator attached yet. If you are the seller, go to your dashboard to set this up.',
           logs,
         },
         { status: 404 }

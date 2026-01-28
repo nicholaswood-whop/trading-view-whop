@@ -18,6 +18,18 @@ export default function Home() {
     // If so, we might want to redirect to dashboard or show appropriate view
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
+    const companyId = params.get('companyId')
+    
+    // Check Whop context for companyId
+    const whopContext = typeof window !== 'undefined' ? (window as any).whop : null
+    const whopCompanyId = whopContext?.companyId || whopContext?.company_id
+    
+    // If companyId is provided and view is seller/dashboard, redirect to dashboard
+    if ((view === 'seller' || view === 'dashboard') && (companyId || whopCompanyId)) {
+      const id = companyId || whopCompanyId
+      router.push(`/dashboard/${id}`)
+      return
+    }
     
     if (view === 'seller' || view === 'dashboard') {
       // Show seller dashboard

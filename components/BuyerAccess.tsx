@@ -387,33 +387,75 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
           </div>
         )}
 
-        {message?.type === 'error' && (window as any).whop?.companyId && (
+        {message?.type === 'error' && message.text.includes('indicator') && (
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-            <a
-              href={`/dashboard/${(window as any).whop.companyId}`}
-              style={{
-                display: 'inline-block',
-                padding: '1rem 2rem',
-                borderRadius: '12px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                textDecoration: 'none',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.5)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = ''
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)'
-              }}
-            >
-              🛠️ Go to Seller Dashboard
-            </a>
+            {/* Try to get companyId from Whop context or show generic link */}
+            {(() => {
+              const whopContext = typeof window !== 'undefined' ? (window as any).whop : null
+              const companyId = whopContext?.companyId || whopContext?.company_id
+              
+              if (companyId) {
+                return (
+                  <a
+                    href={`/dashboard/${companyId}`}
+                    style={{
+                      display: 'inline-block',
+                      padding: '1rem 2rem',
+                      borderRadius: '12px',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                      transition: 'all 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.5)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = ''
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)'
+                    }}
+                  >
+                    🛠️ Go to Seller Dashboard
+                  </a>
+                )
+              } else {
+                // Show a message about accessing dashboard with instructions
+                return (
+                  <div style={{
+                    padding: '1.5rem',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    color: '#4b5563',
+                    textAlign: 'left',
+                  }}>
+                    <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#1a1a1a' }}>
+                      🛠️ Are you the seller?
+                    </strong>
+                    <p style={{ marginBottom: '0.75rem' }}>
+                      To set up indicators, access your seller dashboard:
+                    </p>
+                    <ol style={{ marginLeft: '1.5rem', lineHeight: '1.8' }}>
+                      <li>Go to your Whop dashboard</li>
+                      <li>Navigate to your app settings</li>
+                      <li>Or access directly at: <code style={{ 
+                        background: 'rgba(102, 126, 234, 0.2)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                      }}>/dashboard/[your-company-id]</code></li>
+                    </ol>
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#666' }}>
+                      You can find your company ID in your Whop dashboard URL or app settings.
+                    </p>
+                  </div>
+                )
+              }
+            })()}
           </div>
         )}
 

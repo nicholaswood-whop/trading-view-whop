@@ -14,6 +14,23 @@ export const runtime = 'nodejs'
  */
 export async function POST(request: NextRequest) {
   try {
+    // Check for DATABASE_URL before proceeding
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { 
+          error: 'Database not configured. Please set DATABASE_URL environment variable.',
+          details: 'The app requires a database connection to function. Please configure your Supabase database connection string in the .env file.',
+          logs: [
+            '✗ DATABASE_URL environment variable is missing',
+            'Please set DATABASE_URL in your .env file',
+            'For Supabase: Get connection string from Settings > Database',
+            'See SUPABASE_SETUP.md for detailed instructions',
+          ],
+        },
+        { status: 500 }
+      )
+    }
+
     // For buyer access, we need to be more flexible with authentication
     // Buyers may access through Whop iframe with different auth context
     const user = await getAuthenticatedUser(request)

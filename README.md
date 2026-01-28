@@ -2,18 +2,34 @@
 
 A Whop app that enables sellers to monetize their TradingView indicators by automatically granting and revoking access based on membership status.
 
+## How It Works
+
+### Seller Flow (Owners/Creators)
+1. **Connect TradingView Account**: Sellers connect their TradingView account using session cookies
+2. **Upload Indicators**: Sellers import/upload their TradingView indicators to the app
+3. **Attach to Products**: Sellers attach indicators to Whop experiences/products for sale
+4. **Automatic Management**: The app automatically grants/revokes access based on customer payments
+
+### Buyer Flow (Customers)
+1. **Purchase Membership**: Customers purchase a Whop membership/product that includes indicator access
+2. **Enter TradingView Username**: When accessing the experience, customers enter their TradingView username
+3. **Automatic Access**: Access is automatically granted when payment is active
+4. **Automatic Revocation**: Access is automatically revoked when membership expires or is cancelled
+
 ## Features
 
 ### For Sellers
 - Connect TradingView account using session cookies
-- Automatically import indicators from TradingView
+- Import/upload indicators from TradingView account
 - Attach indicators to Whop experiences/products
-- Manage indicator access
+- Automatic access management based on customer payments
+- View all indicators and their attached experiences
 
 ### For Buyers
 - Enter TradingView username to receive indicator access
-- Automatic access when membership is active
+- Automatic access when membership/payment is active
 - Automatic revocation when membership expires/cancels
+- No manual intervention needed
 
 ## Setup
 

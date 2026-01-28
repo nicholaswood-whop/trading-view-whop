@@ -13,26 +13,28 @@ export const runtime = 'nodejs'
  * Buyer enters their TradingView username to get access
  */
 export async function POST(request: NextRequest) {
+  const logs: string[] = []
+  logs.push(`🔍 [START] Buyer access request received`)
+  logs.push(`📅 Timestamp: ${new Date().toISOString()}`)
+
   try {
     // Check for DATABASE_URL before proceeding
     if (!process.env.DATABASE_URL) {
+      logs.push('✗ DATABASE_URL environment variable is missing')
       return NextResponse.json(
         { 
           error: 'Database not configured. Please set DATABASE_URL environment variable.',
           details: 'The app requires a database connection to function. Please configure your Supabase database connection string in the .env file.',
-          logs: [
-            '✗ DATABASE_URL environment variable is missing',
-            'Please set DATABASE_URL in your .env file',
-            'For Supabase: Get connection string from Settings > Database',
-            'See SUPABASE_SETUP.md for detailed instructions',
-          ],
+          logs,
         },
         { status: 500 }
       )
     }
+    logs.push('✓ DATABASE_URL is configured')
 
     // For buyer access, we need to be more flexible with authentication
     // Buyers may access through Whop iframe with different auth context
+    logs.push('🔐 Checking authentication...')
     const user = await getAuthenticatedUser(request)
     
     // If no user token, try to get from request body (passed from frontend)
@@ -42,25 +44,31 @@ export async function POST(request: NextRequest) {
     if (user) {
       userId = user.userId
       companyId = user.companyId
+      logs.push(`✓ Authenticated user found: userId=${userId}, companyId=${companyId}`)
+    } else {
+      logs.push('⚠️ No authenticated user from token header')
     }
 
     const body = await request.json()
     const { tradingViewUsername, experienceId, membershipId, userId: bodyUserId } = body
+    logs.push(`📦 Request body: experienceId=${experienceId}, membershipId=${membershipId || 'none'}, bodyUserId=${bodyUserId || 'none'}, tradingViewUsername=${tradingViewUsername || 'none'}`)
 
     // Use userId from token, body, or membership lookup
     if (!userId && bodyUserId) {
       userId = bodyUserId
+      logs.push(`✓ Using userId from request body: ${userId}`)
     }
 
     if (!tradingViewUsername || !experienceId) {
+      logs.push(`✗ Missing required fields: tradingViewUsername=${!!tradingViewUsername}, experienceId=${!!experienceId}`)
       return NextResponse.json(
-        { error: 'tradingViewUsername and experienceId are required' },
+        { error: 'tradingViewUsername and experienceId are required', logs },
         { status: 400 }
       )
     }
 
     // Find the indicator attached to this experience
-    // If we have companyId from auth, use it; otherwise find by experienceId only
+    logs.push(`🔍 Looking for indicator with experienceId=${experienceId}, companyId=${companyId || 'any'}`)
     const indicator = await prisma.tradingViewIndicator.findFirst({
       where: {
         experienceId,
@@ -72,40 +80,52 @@ export async function POST(request: NextRequest) {
     })
 
     if (!indicator) {
+      logs.push(`✗ No indicator found for experienceId=${experienceId}`)
       return NextResponse.json(
-        { error: 'No indicator found for this experience' },
+        { error: 'No indicator found for this experience', logs },
         { status: 404 }
       )
     }
+    logs.push(`✓ Found indicator: id=${indicator.id}, name=${indicator.name}, companyId=${indicator.companyId}, tradingViewId=${indicator.tradingViewId}`)
 
     const whopClient = new WhopClient()
 
     // If we don't have userId yet, we need to get it from membership
     if (!userId && membershipId) {
+      logs.push(`🔍 Looking up userId from membershipId=${membershipId}`)
       try {
         const membership = await whopClient.getMembership(membershipId)
         if (membership) {
           userId = membership.user_id
+          logs.push(`✓ Got userId from membership: ${userId}`)
+        } else {
+          logs.push(`⚠️ Membership not found for membershipId=${membershipId}`)
         }
-      } catch (error) {
+      } catch (error: any) {
+        logs.push(`✗ Error fetching membership: ${error.message}`)
         console.error('Error fetching membership for userId:', error)
       }
     }
 
     if (!userId) {
+      logs.push(`✗ Unable to determine userId`)
       return NextResponse.json(
-        { error: 'Unable to determine user. Please ensure you are logged in.' },
+        { error: 'Unable to determine user. Please ensure you are logged in.', logs },
         { status: 401 }
       )
     }
+    logs.push(`✓ Final userId: ${userId}`)
 
     // Check if user is company owner or admin - they get automatic access
+    logs.push(`🔍 Checking if user ${userId} is owner/admin of company ${indicator.companyId}`)
     let isOwnerOrAdmin = false
     if (indicator.companyId) {
       try {
         isOwnerOrAdmin = await whopClient.isUserOwnerOrAdmin(userId, indicator.companyId)
+        logs.push(`✓ Owner/admin check result: ${isOwnerOrAdmin ? 'YES - User is owner/admin' : 'NO - User is not owner/admin'}`)
         
         if (isOwnerOrAdmin) {
+          logs.push(`👑 Processing owner/admin access grant...`)
           // Owner/admin gets automatic access - check if already exists
           let ownerAccess = await prisma.userIndicatorAccess.findUnique({
             where: {
@@ -184,10 +204,13 @@ export async function POST(request: NextRequest) {
             )
           }
         }
-      } catch (error) {
+      } catch (error: any) {
+        logs.push(`✗ Error checking user role: ${error.message || 'Unknown error'}`)
         console.error('Error checking user role:', error)
         // Continue with normal flow if role check fails
       }
+    } else {
+      logs.push(`⚠️ No companyId on indicator, skipping owner/admin check`)
     }
 
     // Check if access already exists
@@ -201,27 +224,28 @@ export async function POST(request: NextRequest) {
     })
 
     if (access && access.isActive) {
+      logs.push(`✓ Access already exists and is active`)
       return NextResponse.json({
         success: true,
         message: 'Access already granted. Your access is automatically managed based on membership status.',
         access,
+        logs,
       })
     }
 
     // Grant access via TradingView
+    logs.push(`🔧 Granting access via TradingView...`)
     const tvClient = new TradingViewClient(
       indicator.connection.sessionId,
       indicator.connection.sessionIdSign
     )
 
-    const logs: string[] = [
-      `User ID: ${userId}`,
-      `Company ID: ${indicator.companyId || 'N/A'}`,
-      `Indicator ID: ${indicator.id}`,
-      `TradingView Indicator ID: ${indicator.tradingViewId}`,
-      `TradingView Username: ${tradingViewUsername}`,
-      `Membership ID: ${membershipId || 'N/A'}`,
-    ]
+    logs.push(`User ID: ${userId}`)
+    logs.push(`Company ID: ${indicator.companyId || 'N/A'}`)
+    logs.push(`Indicator ID: ${indicator.id}`)
+    logs.push(`TradingView Indicator ID: ${indicator.tradingViewId}`)
+    logs.push(`TradingView Username: ${tradingViewUsername}`)
+    logs.push(`Membership ID: ${membershipId || 'N/A'}`)
 
     // Check TradingView connection first
     const connectionValid = await tvClient.verifyConnection()

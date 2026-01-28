@@ -129,28 +129,47 @@ export class WhopClient {
    * @returns true if user is owner or admin, false otherwise
    */
   async isUserOwnerOrAdmin(userId: string, companyId: string): Promise<boolean> {
+    console.log(`[WhopClient] Checking if user ${userId} is owner/admin of company ${companyId}`)
     try {
       // List authorized users for the company, filtering by user_id for efficiency
+      console.log(`[WhopClient] Fetching authorized users for company ${companyId}, user ${userId}`)
       const authorizedUsers = this.client.authorizedUsers.list({
         company_id: companyId,
         user_id: userId, // Filter by user_id to only get this user's authorized status
       })
 
+      let foundUser = false
       // Check if user is in the authorized users list with owner/admin role
       for await (const authorizedUser of authorizedUsers) {
+        console.log(`[WhopClient] Found authorized user: id=${authorizedUser.id}, role=${authorizedUser.role}, user.id=${authorizedUser.user?.id}`)
+        foundUser = true
         // The user object contains the user ID
         if (authorizedUser.user?.id === userId) {
           // Check if role is owner or admin
           const role = authorizedUser.role
+          console.log(`[WhopClient] User ${userId} has role: ${role}`)
           if (role === 'owner' || role === 'admin') {
+            console.log(`[WhopClient] ✓ User ${userId} IS owner/admin`)
             return true
+          } else {
+            console.log(`[WhopClient] ✗ User ${userId} has role ${role}, not owner/admin`)
           }
+        } else {
+          console.log(`[WhopClient] User ID mismatch: expected ${userId}, got ${authorizedUser.user?.id}`)
         }
       }
 
+      if (!foundUser) {
+        console.log(`[WhopClient] ✗ User ${userId} not found in authorized users list`)
+      }
       return false
     } catch (error: any) {
-      console.error('Error checking user role:', error)
+      console.error(`[WhopClient] ✗ Error checking user role:`, error)
+      console.error(`[WhopClient] Error details:`, {
+        message: error.message,
+        status: error.status,
+        response: error.response?.data,
+      })
       // If we can't check, return false to be safe
       return false
     }

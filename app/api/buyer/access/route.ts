@@ -70,12 +70,32 @@ export async function POST(request: NextRequest) {
     // Initialize Whop client early so we can use it for owner checks
     const whopClient = new WhopClient()
 
+    // Try to get companyId from the experience/product if we don't have it
+    let detectedCompanyId = companyId
+    if (!detectedCompanyId && experienceId) {
+      try {
+        logs.push(`🔍 Trying to get companyId from experience/product ID: ${experienceId}`)
+        // Experience ID might be a product ID - try to get product info
+        // First, try if experienceId is actually a product ID
+        const product = await whopClient.getProduct(experienceId)
+        if (product && product.company_id) {
+          detectedCompanyId = product.company_id
+          logs.push(`✓ Got companyId from product: ${detectedCompanyId}`)
+        } else {
+          logs.push(`⚠️ Experience ID ${experienceId} is not a valid product ID or product has no company_id`)
+        }
+      } catch (error: any) {
+        logs.push(`⚠️ Could not get company from experience/product: ${error.message}`)
+        // Experience ID might not be a product ID, that's okay
+      }
+    }
+
     // Find the indicator attached to this experience
-    logs.push(`🔍 Looking for indicator with experienceId=${experienceId}, companyId=${companyId || 'any'}`)
+    logs.push(`🔍 Looking for indicator with experienceId=${experienceId}, companyId=${detectedCompanyId || 'any'}`)
     const indicator = await prisma.tradingViewIndicator.findFirst({
       where: {
         experienceId,
-        ...(companyId ? { companyId } : {}), // Only filter by company if we have it
+        ...(detectedCompanyId ? { companyId: detectedCompanyId } : {}), // Only filter by company if we have it
       },
       include: {
         connection: true,
@@ -86,30 +106,26 @@ export async function POST(request: NextRequest) {
       logs.push(`✗ No indicator found for experienceId=${experienceId}`)
       
       // If user is owner/admin, they should set up the indicator first
-      // Try to get companyId to check if they're the owner
+      // Try to check if they're the owner using the detected companyId
       let isOwner = false
-      let detectedCompanyId = companyId
       
-      // Try to get companyId from product if we have experienceId
-      if (!detectedCompanyId && experienceId) {
-        try {
-          // Experience ID might be a product ID - try to get product info
-          logs.push(`🔍 Trying to get companyId from experience/product...`)
-          // Note: We'd need product API access, but for now we'll suggest dashboard access
-        } catch (error: any) {
-          logs.push(`⚠️ Could not get company from experience: ${error.message}`)
-        }
-      }
-      
-      if (detectedCompanyId && userId) {
-        try {
-          isOwner = await whopClient.isUserOwnerOrAdmin(userId, detectedCompanyId)
-          logs.push(`🔍 Owner check for company ${detectedCompanyId}: ${isOwner ? 'YES' : 'NO'}`)
-        } catch (error: any) {
-          logs.push(`⚠️ Could not check owner status: ${error.message}`)
+      // If we have companyId from product lookup, try to check owner status
+      if (detectedCompanyId) {
+        // If we have userId, check directly
+        if (userId) {
+          try {
+            isOwner = await whopClient.isUserOwnerOrAdmin(userId, detectedCompanyId)
+            logs.push(`🔍 Owner check for company ${detectedCompanyId}: ${isOwner ? 'YES' : 'NO'}`)
+          } catch (error: any) {
+            logs.push(`⚠️ Could not check owner status: ${error.message}`)
+          }
+        } else {
+          // Try to get userId from Whop context or other means
+          logs.push(`⚠️ No userId available for owner check, but companyId=${detectedCompanyId} was found`)
+          logs.push(`💡 If you're the seller, you can access your dashboard at /dashboard/${detectedCompanyId}`)
         }
       } else {
-        logs.push(`⚠️ Cannot check owner status: companyId=${detectedCompanyId || 'none'}, userId=${userId || 'none'}`)
+        logs.push(`⚠️ Cannot determine companyId from experience/product`)
         logs.push(`💡 Tip: If you're the seller, access your dashboard at /dashboard/[companyId] to set up indicators`)
       }
       
@@ -120,6 +136,8 @@ export async function POST(request: NextRequest) {
           companyId: detectedCompanyId || null,
           message: isOwner 
             ? 'You need to connect your TradingView account and attach an indicator to this experience first. Go to your seller dashboard to set this up.'
+            : detectedCompanyId
+            ? `This experience does not have an indicator attached yet. If you are the seller, go to /dashboard/${detectedCompanyId} to set this up.`
             : 'This experience does not have an indicator attached yet. If you are the seller, go to your dashboard to set this up.',
           logs,
         },

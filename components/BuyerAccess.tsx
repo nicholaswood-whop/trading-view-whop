@@ -187,6 +187,12 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
         setLogs(data.logs)
         setShowLogs(true)
       }
+      
+      // Store companyId from response if available (for dashboard link)
+      if (data.companyId && typeof window !== 'undefined') {
+        // Store in a way we can access it later
+        (window as any)._detectedCompanyId = data.companyId
+      }
 
       if (response.ok) {
         if (data.isOwnerOrAdmin) {
@@ -389,10 +395,23 @@ export default function BuyerAccess({ experienceId: propExperienceId, membership
 
         {message?.type === 'error' && message.text.includes('indicator') && (
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-            {/* Try to get companyId from Whop context or show generic link */}
+            {/* Try to get companyId from Whop context, API response, or show generic link */}
             {(() => {
               const whopContext = typeof window !== 'undefined' ? (window as any).whop : null
-              const companyId = whopContext?.companyId || whopContext?.company_id
+              let companyId = whopContext?.companyId || whopContext?.company_id
+              
+              // Also check if companyId was returned in the API response
+              // This would be set if we successfully looked it up from the product
+              if (!companyId && typeof window !== 'undefined') {
+                // Try to extract from logs or check if it was in the response
+                const logsWithCompany = logs.find(log => log.includes('companyId='))
+                if (logsWithCompany) {
+                  const match = logsWithCompany.match(/companyId=([^,\s]+)/)
+                  if (match && match[1] && match[1] !== 'none' && match[1] !== 'any') {
+                    companyId = match[1]
+                  }
+                }
+              }
               
               if (companyId) {
                 return (

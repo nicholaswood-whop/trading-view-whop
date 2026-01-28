@@ -145,16 +145,46 @@ export class WhopClient {
 
   /**
    * Check if a user is an owner or admin of a company
-   * Uses the authorizedUsers endpoint to check user roles
+   * Tries multiple methods to check user roles:
+   * 1. Check company.owner_user.id (most reliable, requires company:basic:read)
+   * 2. Check authorizedUsers endpoint (requires company:authorized_user:read permission)
    * @param userId The user ID to check
    * @param companyId The company ID to check against
    * @returns true if user is owner or admin, false otherwise
    */
   async isUserOwnerOrAdmin(userId: string, companyId: string): Promise<boolean> {
     console.log(`[WhopClient] Checking if user ${userId} is owner/admin of company ${companyId}`)
+    
+    // Method 1: Check company.owner_user.id (most reliable, requires company:basic:read)
     try {
-      // List authorized users for the company, filtering by user_id for efficiency
-      console.log(`[WhopClient] Fetching authorized users for company ${companyId}, user ${userId}`)
+      console.log(`[WhopClient] Method 1: Fetching company info for ${companyId}`)
+      const company = await this.client.companies.retrieve(companyId)
+      console.log(`[WhopClient] Company retrieved:`, {
+        id: company.id,
+        title: company.title,
+        hasOwnerUser: !!(company as any).owner_user,
+      })
+      
+      // Check if user is the company owner via owner_user.id
+      const ownerUser = (company as any).owner_user
+      if (ownerUser && ownerUser.id === userId) {
+        console.log(`[WhopClient] ✓ User ${userId} IS the company owner (from company.owner_user.id)`)
+        return true
+      } else if (ownerUser) {
+        console.log(`[WhopClient] Company owner is ${ownerUser.id}, not ${userId}`)
+      } else {
+        console.log(`[WhopClient] Company object doesn't have owner_user field`)
+      }
+    } catch (companyError: any) {
+      console.log(`[WhopClient] Could not get company info: ${companyError.message}`)
+      if (companyError.status === 403) {
+        console.log(`[WhopClient] ⚠️ Missing company:basic:read permission`)
+      }
+    }
+    
+    // Method 2: Try authorizedUsers endpoint (requires company:authorized_user:read permission)
+    try {
+      console.log(`[WhopClient] Method 2: Fetching authorized users for company ${companyId}, user ${userId}`)
       const authorizedUsers = this.client.authorizedUsers.list({
         company_id: companyId,
         user_id: userId, // Filter by user_id to only get this user's authorized status
@@ -184,17 +214,26 @@ export class WhopClient {
       if (!foundUser) {
         console.log(`[WhopClient] ✗ User ${userId} not found in authorized users list`)
       }
-      return false
-    } catch (error: any) {
-      console.error(`[WhopClient] ✗ Error checking user role:`, error)
-      console.error(`[WhopClient] Error details:`, {
-        message: error.message,
-        status: error.status,
-        response: error.response?.data,
+    } catch (authError: any) {
+      console.error(`[WhopClient] ✗ Error checking authorized users:`, {
+        message: authError.message,
+        status: authError.status,
       })
-      // If we can't check, return false to be safe
-      return false
+      // 403 means we don't have permission - this is expected if API key lacks company:authorized_user:read
+      if (authError.status === 403) {
+        console.log(`[WhopClient] ⚠️ Missing company:authorized_user:read permission`)
+        console.log(`[WhopClient] ⚠️ This is OK - we'll rely on company.owner_user check instead`)
+      }
     }
+    
+    // If we couldn't verify via either method, return false
+    console.log(`[WhopClient] ✗ Could not verify that user ${userId} is owner/admin of company ${companyId}`)
+    console.log(`[WhopClient] ⚠️ This might mean:`)
+    console.log(`[WhopClient]   1. API key doesn't have company:basic:read or company:authorized_user:read permissions`)
+    console.log(`[WhopClient]   2. User is not actually owner/admin`)
+    console.log(`[WhopClient]   3. Company structure doesn't include owner_user field`)
+    
+    return false
   }
 
   /**

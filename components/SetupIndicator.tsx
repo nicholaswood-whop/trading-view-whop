@@ -146,6 +146,8 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [connected, setConnected] = useState(false)
+  const [manualScriptId, setManualScriptId] = useState('')
+  const [manualName, setManualName] = useState('')
 
   useEffect(() => {
     checkSetupStatus()
@@ -249,24 +251,67 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
       const data = await response.json()
 
       if (response.ok) {
-        const importedCount = data.count || data.indicatorsImported || 0
-        setMessage({
-          type: 'success',
-          text: `Successfully imported ${importedCount} indicator${importedCount !== 1 ? 's' : ''}!`,
-        })
-        // Refresh to get the imported indicators and move to attach step
-        await checkSetupStatus()
+        const importedCount = data.count ?? 0
         if (importedCount > 0) {
-          // Small delay to show success message before moving to next step
-          setTimeout(() => {
-            setStep('attach')
-          }, 1000)
+          setMessage({
+            type: 'success',
+            text: `Successfully imported ${importedCount} indicator${importedCount !== 1 ? 's' : ''}!`,
+          })
+          await checkSetupStatus()
+          setTimeout(() => setStep('attach'), 1000)
+        } else {
+          setMessage({
+            type: 'success',
+            text: "TradingView doesn't provide an API to list scripts. Add your indicator manually below using the Script ID from your script's URL.",
+          })
+          await checkSetupStatus()
         }
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to import indicators. Please ensure your TradingView account is connected.' })
+        setMessage({ type: 'error', text: data.error || 'Failed to import. Ensure your TradingView account is connected.' })
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Import failed' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddManual = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!manualScriptId.trim() || !manualName.trim()) {
+      setMessage({ type: 'error', text: 'Please enter both Script ID and indicator name.' })
+      return
+    }
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      const response = await fetch('/api/seller/indicators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId,
+          scriptId: manualScriptId.trim(),
+          name: manualName.trim(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        const addedName = manualName.trim()
+        setMessage({
+          type: 'success',
+          text: `"${addedName}" added. You can add another or continue to Attach.`,
+        })
+        setManualScriptId('')
+        setManualName('')
+        await checkSetupStatus()
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to add indicator.' })
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Add failed' })
     } finally {
       setLoading(false)
     }
@@ -435,18 +480,14 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
           </div>
         )}
 
-        {/* Step 2: Import Indicators */}
+        {/* Step 2: Import / Add Indicators */}
         {step === 'import' && (
           <div>
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#1f2937' }}>
-              Import Your Indicators
+              Import or Add Your Indicator
             </h2>
             <p style={{ marginBottom: '1.5rem', color: '#6b7280', lineHeight: '1.6' }}>
-              Import your TradingView indicators. This will fetch all indicators from your connected TradingView account.
-              <br />
-              <span style={{ fontSize: '0.9rem', display: 'block', marginTop: '0.5rem' }}>
-                After importing, you'll be able to select which indicator to attach to this experience.
-              </span>
+              TradingView does not provide a public API to list your scripts. Try &quot;Import Indicators&quot; once; if nothing is found, add your indicator manually using the <strong>Script ID</strong> from your script&apos;s URL on TradingView (e.g. <code style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>ABC123-My-Indicator</code> or the numeric ID).
             </p>
             {!connected && (
               <div style={{
@@ -460,9 +501,10 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
                 ⚠️ TradingView account not connected. Please go back to step 1 to connect your account first.
               </div>
             )}
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                onClick={() => setStep('connect')} 
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setStep('connect')}
                 style={{
                   ...styles.button,
                   background: '#6b7280',
@@ -471,9 +513,10 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
               >
                 ← Back to Connect
               </button>
-              <button 
-                onClick={handleImport} 
-                disabled={loading || !connected} 
+              <button
+                type="button"
+                onClick={handleImport}
+                disabled={loading || !connected}
                 style={{
                   ...styles.button,
                   flex: 2,
@@ -484,6 +527,65 @@ export default function SetupIndicator({ experienceId, companyId, onComplete }: 
                 {loading ? 'Importing...' : 'Import Indicators'}
               </button>
             </div>
+
+            <div style={{
+              marginTop: '1.5rem',
+              padding: '1.25rem',
+              border: '2px solid rgba(102, 126, 234, 0.25)',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(102, 126, 234, 0.04)',
+            }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1f2937' }}>
+                Add indicator manually
+              </h3>
+              <form onSubmit={handleAddManual}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="manualScriptId" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#374151' }}>
+                    Script ID
+                  </label>
+                  <input
+                    id="manualScriptId"
+                    type="text"
+                    placeholder="e.g. from URL: tradingview.com/script/YourScriptId/"
+                    value={manualScriptId}
+                    onChange={(e) => setManualScriptId(e.target.value)}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="manualName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#374151' }}>
+                    Indicator name
+                  </label>
+                  <input
+                    id="manualName"
+                    type="text"
+                    placeholder="e.g. My Custom Indicator"
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                    style={styles.input}
+                  />
+                </div>
+                <button type="submit" disabled={loading} style={styles.button}>
+                  {loading ? 'Adding...' : 'Add indicator'}
+                </button>
+              </form>
+            </div>
+
+            {indicators.length > 0 && (
+              <div style={{ marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setStep('attach')}
+                  style={{
+                    ...styles.button,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
+                  }}
+                >
+                  Continue to Attach ({indicators.length} indicator{indicators.length !== 1 ? 's' : ''})
+                </button>
+              </div>
+            )}
           </div>
         )}
 

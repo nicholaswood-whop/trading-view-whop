@@ -36,10 +36,10 @@ export class TradingViewClient {
   }
 
   /**
-   * Get all indicators/pine scripts for the authenticated user
-   * 
-   * NOTE: TradingView doesn't have a public API. These endpoints are placeholders
-   * and may need to be reverse-engineered or replaced with browser automation.
+   * Get all indicators/pine scripts for the authenticated user.
+   * TradingView does not provide a public API to list user scripts; these endpoints
+   * are placeholders and typically return 404/401. Use "Add indicator manually" in the
+   * app with your script ID from the TradingView script URL.
    */
   async getIndicators(): Promise<TradingViewIndicator[]> {
     const endpoints = [
@@ -47,21 +47,19 @@ export class TradingViewClient {
       '/u/scripts/',
       '/api/v1/user/scripts/',
     ]
+    const tried: string[] = []
 
     for (const endpoint of endpoints) {
       try {
         const response = await this.client.get(endpoint, {
-          params: {
-            order: 'created',
-            limit: 100,
-          },
-          validateStatus: (status) => status < 500, // Don't throw on 4xx
+          params: { order: 'created', limit: 100 },
+          validateStatus: (status) => status < 500,
         })
 
+        tried.push(`${endpoint} → ${response.status}`)
+
         if (response.status === 200 && response.data) {
-          // Try different response structures
           const results = response.data.results || response.data.data || response.data.scripts || response.data
-          
           if (Array.isArray(results) && results.length > 0) {
             return results.map((script: any) => ({
               id: script.id?.toString() || script.script_id?.toString() || script.pine_id?.toString(),
@@ -71,14 +69,17 @@ export class TradingViewClient {
           }
         }
       } catch (error: any) {
-        // Continue to next endpoint
-        console.log(`Endpoint ${endpoint} failed, trying next...`)
-        continue
+        const status = error.response?.status
+        const msg = error.response?.data ? JSON.stringify(error.response.data).slice(0, 80) : error.message
+        tried.push(`${endpoint} → error ${status || ''} ${msg}`)
       }
     }
 
-    // If all endpoints fail, return empty array with warning
-    console.warn('Could not fetch indicators from TradingView. Endpoints may need to be updated.')
+    console.warn(
+      '[TradingView] No list-of-scripts API available. Tried:',
+      tried.join('; '),
+      '— Use "Add indicator manually" with your script ID from the script URL.'
+    )
     return []
   }
 
